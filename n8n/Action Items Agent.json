@@ -1,0 +1,386 @@
+{
+  "name": "Action Items Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "bf5b6325-6900-46de-addf-3640c9a7f66d",
+      "name": "Telegram Trigger",
+      "webhookId": "3572239e-0c33-4af8-9b37-7e3879a1d7e8",
+      "credentials": {
+        "telegramApi": {
+          "id": "dkDrWxdCmUK6pqkU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const item = $input.first().json;\n  let text = '';\n\n  if (item.message?.text) {\n    text = item.message.text;\n  } else if (item.text) {\n    text = item.text;\n  } else if (item.snippet || item.textPlain) {\n    text = item.textPlain || item.snippet;\n  } else if (item.body?.text) {\n    text = item.body.text;\n  } else {\n    const firstStringField = Object.values(item).find(v => typeof v === 'string' && v.length > 20);\n    text = firstStringField || '';\n  }\n\n  if (!text || text.trim().length === 0) {\n    return [{\n      json: {\n        cleaned_text: '',\n        status: 'no_text_found',\n        text_quality_review: true,\n        raw_input: item\n      }\n    }];\n  }\n\n  \n  text = text.replace(/\\[?\\d{1,2}:\\d{2}(:\\d{2})?\\]?/g, '');\n  \n  text = text.replace(/\\b[A-Z][a-zA-Z]*\\s?\\d*:/g, '');\n  \n  text = text.replace(/\\b(um+|uh+|like|you know|i think|i mean|so um|kind of|sort of)\\b/gi, '');\n  \n  text = text.replace(/\\.{2,}/g, '.').replace(/\\s+/g, ' ').trim();\n\n  const status = text.length < 10 ? 'too_short' : 'ok';\n\n  return [{\n    json: {\n      cleaned_text: text,\n      original_length: item.message?.text?.length || item.text?.length || 0,\n      cleaned_length: text.length,\n      status: status,\n      text_quality_review: status !== 'ok'\n    }\n  }];\n\n} catch (err) {\n  return [{\n    json: {\n      cleaned_text: '',\n      status: 'code_error',\n      text_quality_review: true,\n      error_message: err.message\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "9d7ac60d-13c6-4a21-b318-2a718d540c2d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.cleaned_text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an action item extractor. The transcript may be messy, unpunctuated, or ambiguous (auto-transcribed speech).\nDo your best to infer sentence boundaries and speaker intent.\nReturn ONLY a valid JSON array, no markdown, no explanation.\nEach object must have: \"task\", \"owner\", \"deadline\", \"confidence\" (high/medium/low).\nIf you cannot confidently identify an owner or deadline, use \"Unclear\" instead of guessing.\nIf the entire transcript has no identifiable action items, return an empty array: []",
+          "maxIterations": 1,
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        432,
+        0
+      ],
+      "id": "41fbbd20-f4d7-413d-9547-b7180c5532d5",
+      "name": "AI Agent",
+      "executeOnce": false,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        288,
+        304
+      ],
+      "id": "0b489677-e752-496f-adfe-f97ff6b508ad",
+      "name": "Google Gemini Chat Model",
+      "notesInFlow": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Srp5XJpKYMONQPxl",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        480,
+        368
+      ],
+      "id": "5001972b-d321-47af-bda2-9e936706c8f8",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"items\": [\n    {\n      \"task\": \"Send the revised proposal to Acme\",\n      \"owner\": \"Maria\",\n      \"deadline\": \"Friday\",\n      \"confidence\": \"high\"\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        288
+      ],
+      "id": "ec8ae6d4-a238-49b6-bccc-d1d641d6dc78",
+      "name": "Structured Output Parser",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5f77cb70-42dd-4e9c-a3a8-8625511e85fb",
+              "leftValue": "={{ $json.needs_review }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        992,
+        0
+      ],
+      "id": "58681de2-77ea-4ce7-b6a6-a2c2f2db9f57",
+      "name": "If",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1_hI4tpQxn4zVS3gv0f3TDHGrENzBHpZgfMw67hY00ZQ",
+          "mode": "list",
+          "cachedResultName": "Action Items Agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_hI4tpQxn4zVS3gv0f3TDHGrENzBHpZgfMw67hY00ZQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_hI4tpQxn4zVS3gv0f3TDHGrENzBHpZgfMw67hY00ZQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Task": "={{ $json.task }}",
+            "Owner": "={{ $json.owner }}",
+            "Deadline": "={{ $json.deadline }}",
+            "Status": "="
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Task",
+              "displayName": "Task",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Owner",
+              "displayName": "Owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1280,
+        192
+      ],
+      "id": "ec430279-bad3-4e3b-867d-d9c7700f1558",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i6esJNkFcV0YOMWy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=⚠️ Needs review: \n\n{{ $('AI Agent').item.json.output[0].task }} — Owner: {{ $('AI Agent').item.json.output[0].owner }}, Deadline: {{ $('AI Agent').item.json.output[0].deadline }} (confidence: {{ $('AI Agent').item.json.output[0].confidence }})",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        -160
+      ],
+      "id": "0e1467f2-ded2-46c3-8f40-d47d35423325",
+      "name": "Send a text message",
+      "webhookId": "bdc0e138-b1e2-406e-b9e2-767415ec1b04",
+      "credentials": {
+        "telegramApi": {
+          "id": "dkDrWxdCmUK6pqkU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const item = $input.first().json;\n  const items = item.output || [];\n\n  if (!Array.isArray(items) || items.length === 0) {\n    return [{ json: { status: 'no_action_items', needs_review: false } }];\n  }\n\n  return items.map(entry => {\n    const task = entry.task || 'Unclear';\n    const owner = entry.owner || 'Unclear';\n    const deadline = entry.deadline || 'Not specified';\n    const confidence = entry.confidence || 'low';\n\n    return {\n      json: {\n        task,\n        owner,\n        deadline,\n        confidence,\n        needs_review: confidence === 'low' || owner === 'Unclear' || task === 'Unclear'\n      }\n    };\n  });\n\n} catch (err) {\n  return [{\n    json: {\n      status: 'code_error',\n      needs_review: true,\n      error_message: err.message\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "27d7b3ce-5d58-4663-bcca-6362dbdb4a6d",
+      "name": "Code: parse & validate",
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code: parse & validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: parse & validate": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "6a33986e-06b1-4c95-a172-f39333eddeee",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3a4267087a1cd4546d5f78d48d918a3a754654182d2d302f092325ad6c1d9654"
+  },
+  "nodeGroups": [],
+  "id": "IQRclVukxwwcquiD",
+  "tags": []
+}
