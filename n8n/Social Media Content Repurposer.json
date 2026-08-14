@@ -1,0 +1,281 @@
+{
+  "name": "Social Media Content Repurposer",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "custom",
+              "cronExpression": "Minutes: 0-15"
+            }
+          ]
+        },
+        "feedUrl": "https://techcrunch.com/feed/"
+      },
+      "type": "n8n-nodes-base.rssFeedReadTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4ca8fd05-cd01-4ae6-b09e-22c8f5857749",
+      "name": "RSS Feed Trigger",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const item = $input.first().json;\n\n  // RSS feeds usually give content directly — no HTML fetch needed\n  let text = item.content || item.contentSnippet || item.summary || '';\n\n  // Strip any leftover HTML tags if the feed includes them\n  text = text.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n\n  if (!text || text.length < 50) {\n    return [{ json: { status: 'no_content_found', needs_review: true, raw_input: item } }];\n  }\n\n  return [{\n    json: {\n      title: item.title,\n      link: item.link,\n      article_text: text.slice(0, 6000)\n    }\n  }];\n\n} catch (err) {\n  return [{ json: { status: 'code_error', needs_review: true, error_message: err.message } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b3a952cc-a4b8-4733-8ce8-87cfd811fac8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Title: {{ $json.title }}\n\nArticle: {{ $json.article_text }}",
+        "options": {
+          "systemMessage": "You are a social media copywriter. Given a blog article title and body, create 3 platform-specific versions.\nReturn ONLY a valid JSON array, no markdown, no explanation.\nEach object must have: \"platform\", \"content\".\n- LinkedIn: professional tone, ~150 words, end with a question\n- X: a 5-tweet thread, punchy, numbered (1/5, 2/5, etc.)\n- Instagram: casual tone, emojis, end with \"save this post for later\""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "6ba84da0-7751-4f3e-b8bd-e92b2fd128c2",
+      "name": "AI Agent",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        336,
+        208
+      ],
+      "id": "c3eb1762-dcc5-43ad-abd4-30b1419c15ab",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Srp5XJpKYMONQPxl",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        576,
+        224
+      ],
+      "id": "3df55afc-e45c-404f-b15f-8c92f209c4b6",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  let raw = $input.first().json.output || $input.first().json.text || '';\n  raw = raw.replace(/```json\\s*/gi, '').replace(/```/g, '').trim();\n  const items = JSON.parse(raw);\n\n  \n  const sourceData = $('Code in JavaScript').first().json;\n\n  return items.map(entry => ({\n    json: {\n      platform: entry.platform,\n      content: entry.content,\n      source_title: sourceData.title,\n      source_link: sourceData.link,\n      status: 'Pending Review'\n    }\n  }));\n} catch (err) {\n  return [{ json: { status: 'parse_failed', error_message: err.message } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "548b7346-56b9-4970-8f72-23a024d4ea67",
+      "name": "Code Parse"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1tX5QqSKQdmHiJuE_HxN2OzsBI8Hqpef8atVxC91qlFE",
+          "mode": "list",
+          "cachedResultName": "Social Media Content Repurposer",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tX5QqSKQdmHiJuE_HxN2OzsBI8Hqpef8atVxC91qlFE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tX5QqSKQdmHiJuE_HxN2OzsBI8Hqpef8atVxC91qlFE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Platform": "={{ $json.platform }}",
+            "Content": "={{ $json.content }}",
+            "Source title": "={{ $json.source_title }}",
+            "Source link": "={{ $json.source_link }}",
+            "Status": "={{ $json.status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Platform",
+              "displayName": "Platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Content",
+              "displayName": "Content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source title",
+              "displayName": "Source title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source link",
+              "displayName": "Source link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        0
+      ],
+      "id": "69601697-ad27-4d05-812c-b7d8c39c44a8",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i6esJNkFcV0YOMWy",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "RSS Feed Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Parse": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "891fe22f-b043-4856-b048-1ee34fd3d72a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3a4267087a1cd4546d5f78d48d918a3a754654182d2d302f092325ad6c1d9654"
+  },
+  "nodeGroups": [],
+  "id": "ngKTKhRFmGUhSqmS",
+  "tags": []
+}

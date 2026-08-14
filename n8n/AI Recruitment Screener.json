@@ -1,0 +1,373 @@
+{
+  "name": "AI Recruitment Screener",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Recruitment Screener",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "full_name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "resume",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "job_description",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "email",
+              "fieldType": "email",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -496,
+        -64
+      ],
+      "id": "ea59f3be-7834-49bd-9e16-9ee99b9d6b0b",
+      "name": "On form submission",
+      "webhookId": "56bad37f-3146-410a-9d24-57f47374012e"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -272,
+        -64
+      ],
+      "id": "a9aa38d3-b966-436b-831c-71edc0bace30",
+      "name": "Extract from File",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Job Description: {{ $('On form submission').item.json.job_description }}\n\nResume:\n{{ $json.text }}",
+        "options": {
+          "systemMessage": "You are a recruitment screener. Compare the candidate's resume against the job description provided.\nReturn ONLY a valid JSON object, no markdown, no code fences, no explanation.\nRequired fields: \"candidate_name\", \"score\" (0-100), \"match_summary\" (2-3 sentences), \"flags\" (gaps/concerns, or \"None\").\nRequired certifications explicitly mentioned in the job description are a hard requirement — if missing, score no higher than 40.\nDo not penalize a candidate for lacking a formal title if their described responsibilities show equivalent experience — note this in flags instead."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -48,
+        -64
+      ],
+      "id": "7d5df4a3-e591-48e8-8277-f871b11e1211",
+      "name": "AI Agent",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        192
+      ],
+      "id": "5dded2f4-410d-4387-99c6-34ea32417b3e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Srp5XJpKYMONQPxl",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        96,
+        192
+      ],
+      "id": "88690ca1-1ee0-40b7-9145-b5329193bddc",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  let raw = $input.first().json.output || $input.first().json.text || '';\n  raw = raw.replace(/```json\\s*/gi, '').replace(/```/g, '').trim();\n  const result = JSON.parse(raw);\n\n  return [{\n    json: {\n      candidate_name: result.candidate_name || 'Unclear',\n      score: result.score ?? 0,\n      match_summary: result.match_summary || '',\n      flags: result.flags || 'None',\n      top_candidate: (result.score ?? 0) > 80\n    }\n  }];\n} catch (err) {\n  return [{ json: { status: 'parse_failed', error_message: err.message, top_candidate: false } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -64
+      ],
+      "id": "c85a5766-eaf2-45d6-9f65-2e1a05c330bc",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1kb4Y8jGZ6YzErQzYM2OCsrbVC3W0hK3VX7YjRCZpUcE",
+          "mode": "list",
+          "cachedResultName": "AI Recruitment Screener",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kb4Y8jGZ6YzErQzYM2OCsrbVC3W0hK3VX7YjRCZpUcE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kb4Y8jGZ6YzErQzYM2OCsrbVC3W0hK3VX7YjRCZpUcE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Candidate Name": "={{ $json.candidate_name }}",
+            "Score ": "={{ $json.score }}",
+            "Match Summary": "={{ $json.match_summary }}",
+            "Flag": "={{ $json.flags }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Candidate Name",
+              "displayName": "Candidate Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score ",
+              "displayName": "Score ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Match Summary",
+              "displayName": "Match Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Flag",
+              "displayName": "Flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        512,
+        -64
+      ],
+      "id": "e2bd46fe-70c2-4093-a0e8-fd8b42ae5306",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i6esJNkFcV0YOMWy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "969c959d-c011-49ff-ae44-c45573e8ea3d",
+              "leftValue": "={{ $('Code in JavaScript1').item.json.top_candidate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        -64
+      ],
+      "id": "577a07b7-9f6e-4d8c-8b9b-586c77c54ad6",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BGQPY5RJS",
+          "mode": "list",
+          "cachedResultName": "all-rehs-ws"
+        },
+        "text": "=🎯 Top candidate:\n\n{{ $('Code in JavaScript1').item.json.candidate_name }} ({{ $('Code in JavaScript1').item.json.score }}/100) {{ $('Code in JavaScript1').item.json.match_summary }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.5,
+      "position": [
+        912,
+        -192
+      ],
+      "id": "76aff338-5af9-46f2-98be-33a17d9adc94",
+      "name": "Send a message",
+      "webhookId": "7133ad1e-8c0b-450b-92a4-d058431d5584",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "MkcGW7mQBdE800f1",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b3e4c273-cf86-498f-b36f-2aaee2594ed0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3a4267087a1cd4546d5f78d48d918a3a754654182d2d302f092325ad6c1d9654"
+  },
+  "nodeGroups": [],
+  "id": "h8rZOuEjemVxCija",
+  "tags": []
+}
