@@ -1,0 +1,744 @@
+{
+  "name": "AI Sales & Customer Support Automation Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "268fd2dd-75c2-4c74-b374-b7aeca210432",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -208,
+        32
+      ],
+      "id": "fd7dedbd-1e3b-464e-b3ea-f2f8e3458658",
+      "name": "Webhook",
+      "webhookId": "268fd2dd-75c2-4c74-b374-b7aeca210432"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=BUDGET:\nIf the customer provides a budget, return the numeric amount.\n\nExample:\n\"$5,000 budget\" → 5000\n\nIf the customer does not provide a budget, return 0.\n\nNever invent a budget.\n\n\nTIMELINE:\nIf the customer provides a timeline, return it.\n\nExamples:\n\"within 30 days\" → \"30 days\"\n\"next month\" → \"next month\"\n\nIf the customer does not provide a timeline, return \"Not provided\".\n\nNever invent a timeline.\n\n\nCUSTOMER UPDATE:\nIf the customer wants to change existing information:\n\nSet action to exactly:\n\"Update Customer\"\n\nSet updated_field to one of:\nfull_name\nemail\nphone\ncompany\n\nSet updated_value to the new value.\n\nIf the customer is not requesting an update:\nupdated_field = \"none\"\nupdated_value = \"none\"\n\nNever invent updated information.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are an AI Customer Support and Lead Qualification Agent for a digital services company.\n\nYour job is to analyze each customer inquiry, determine the customer's intent, qualify the customer as a potential sales lead when appropriate, and determine the correct business action.\n\n==================================================\nCUSTOMER INFORMATION\n==================================================\n\nCustomer ID:\n{{ $json.body.customer_id }}\n\nFull Name:\n{{ $json.body.full_name }}\n\nEmail:\n{{ $json.body.email }}\n\nPhone:\n{{ $json.body.phone }}\n\nCompany:\n{{ $json.body.company }}\n\nSource:\n{{ $json.body.source }}\n\nCustomer Message:\n{{ $json.body.message }}\n\nTimestamp:\n{{ $now }}\n\n\n==================================================\nYOUR RESPONSIBILITIES\n==================================================\n\n1. Understand the customer's message.\n\n2. Identify the customer's primary intent.\n\n3. Determine whether the customer is a potential sales lead.\n\n4. Assign a lead score from 0 to 100.\n\n5. Identify the service the customer is interested in.\n\n6. Determine the customer's priority.\n\n7. Search the company knowledge base when information is needed about:\n   - Pricing\n   - Services\n   - Delivery time\n   - Policies\n   - FAQs\n   - Company capabilities\n\n8. Use customer lookup tools when existing customer information needs to be checked.\n\n9. Create a lead when the customer is a qualified sales opportunity.\n\n10. Update customer information when an existing customer requests a change to their stored information.\n\n11. Escalate to a human when:\n   - The customer requests a refund.\n   - The customer makes a serious complaint.\n   - The customer raises a legal issue.\n   - The customer has a highly sensitive issue.\n   - The customer is angry or highly dissatisfied.\n   - The question cannot be answered confidently using the available information.\n   - Human judgment is required.\n\n12. Answer normal customer questions when they can be answered confidently using the available knowledge base.\n\n13. Never invent company information, prices, policies, services, delivery times, customer information, budget, or timeline.\n\n14. Keep customer responses professional, helpful, and concise.\n\n\n==================================================\nALLOWED ACTIONS\n==================================================\n\nThe \"Action\" field MUST be exactly one of these four values:\n\nCreate Lead\nUpdate Customer\nEscalate to Human\nAnswer Customer\n\n\n==================================================\nACTION RULES\n==================================================\n\nCREATE LEAD:\n\nUse \"Create Lead\" when the customer demonstrates purchasing intent or is asking about a service they may want to purchase.\n\nExamples:\n- Asking for a quote.\n- Asking about pricing for a service.\n- Asking about project timeline.\n- Requesting a proposal.\n- Describing a project they want built.\n- Asking to hire the company.\n- Providing a budget and/or timeline.\n- Showing strong interest in purchasing a service.\n\n\nUPDATE CUSTOMER:\n\nUse \"Update Customer\" when an existing customer wants to change information stored in their customer record.\n\nExamples:\n- Changing their phone number.\n- Changing their email address.\n- Changing their name.\n- Changing their company name.\n\nWhen using \"Update Customer\":\n\nIdentify exactly which field needs to be updated.\n\nAllowed fields:\n- full_name\n- email\n- phone\n- company\n\nPut the field name in \"updated_field\".\n\nPut the new customer information in \"updated_value\".\n\nIf the customer is not requesting an update:\n- updated_field = null\n- updated_value = null\n\nNever invent updated information.\n\n\nESCALATE TO HUMAN:\n\nUse \"Escalate to Human\" when:\n- The customer requests a refund.\n- The customer has a serious complaint.\n- The customer raises a legal issue.\n- The customer has a highly sensitive issue.\n- The customer is highly dissatisfied or angry.\n- The question cannot be answered confidently.\n- The issue requires human judgment.\n\nClearly explain the reason for escalation in the \"Reason\" field.\n\n\nANSWER CUSTOMER:\n\nUse \"Answer Customer\" for normal questions that can be answered confidently using the available knowledge base.\n\nExamples:\n- General company questions.\n- General service questions.\n- FAQ questions.\n- Basic informational questions.\n\nIf the required information is not available in the knowledge base, do NOT invent an answer. Use \"Escalate to Human\" instead when the question cannot be confidently answered.\n\n\n==================================================\nBUDGET EXTRACTION\n==================================================\n\nExtract the customer's budget from their message when provided.\n\nIf the customer provides a budget:\n- Return the numeric amount only.\n\nExample:\n\"$5,000 budget\" → 5000\n\nIf the customer provides no budget:\n- Return null.\n\nNever invent a budget.\n\n\n==================================================\nTIMELINE EXTRACTION\n==================================================\n\nExtract the customer's requested project timeline when provided.\n\nExamples:\n- \"within 30 days\" → \"30 days\"\n- \"next month\" → \"next month\"\n- \"before December\" → \"before December\"\n\nIf the customer provides no timeline:\n- Return null.\n\nNever invent a timeline.\n\n\n==================================================\nLEAD SCORING\n==================================================\n\nAssign a lead score from 0 to 100.\n\n90-100 = Very high-quality lead\n75-89 = High-quality lead\n50-74 = Medium-quality lead\n25-49 = Low-quality lead\n0-24 = Not a sales lead\n\nConsider:\n- Purchase intent\n- Specific service requested\n- Budget\n- Timeline\n- Urgency\n- Project details\n- Request for pricing or quotation\n- Readiness to move forward\n\nDo not assign a high score simply because the customer asks a general question.\n\nFor non-sales requests such as customer information updates or support issues, the lead score should normally be low or 0.\n\n\n==================================================\nPRIORITY\n==================================================\n\nHIGH:\n- Refund request\n- Serious complaint\n- Legal issue\n- Highly sensitive issue\n- Urgent issue\n- Highly qualified sales opportunity\n\nMEDIUM:\n- Normal sales inquiry\n- Pricing question\n- Technical support\n- Project inquiry without strong urgency\n\nLOW:\n- General question\n- Informational request\n- Simple customer information update\n\n\n==================================================\nCUSTOMER RESPONSE\n==================================================\n\nGenerate a professional response to the customer.\n\nAlways address the customer by their first name.\n\nThe response must:\n- Be concise.\n- Be helpful.\n- Use verified information from the knowledge base when available.\n- Never invent company information.\n- Never invent prices.\n- Never invent policies.\n- Never invent delivery times.\n- Never invent customer information.\n\nIf information needs to be verified, clearly tell the customer that it needs to be verified.\n\nIf the customer is being escalated, explain that a human team member will need to review the request.\n\nDo not include internal lead scores, internal reasoning, or internal workflow details in the customer response.\n\n\n==================================================\nIMPORTANT RULES\n==================================================\n\nNever invent:\n- Budget\n- Timeline\n- Service\n- Price\n- Company policy\n- Customer information\n- Customer update\n- Delivery time\n\nIf information is missing, return null where appropriate.\n\nIf an existing customer requests an information change:\n- Action = \"Update Customer\"\n- Identify updated_field\n- Identify updated_value\n\nIf the customer is a qualified sales opportunity:\n- Action = \"Create Lead\"\n\nIf human intervention is required:\n- Action = \"Escalate to Human\"\n\nIf the question can be confidently answered:\n- Action = \"Answer Customer\"\n\n\n==================================================\nOUTPUT\n==================================================\n\nReturn the result using these fields:\n\nIntent:\nCustomer Type:\nService Interested:\nBudget:\nTimeline:\nUpdated Field:\nUpdated Value:\nLead Score:\nPriority:\nAction:\nReason:\nCustomer Response:\n\nThe Action field MUST contain exactly one of:\n\nCreate Lead\nUpdate Customer\nEscalate to Human\nAnswer Customer"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -16,
+        32
+      ],
+      "id": "9cd950e3-e5a3-43a8-bc1f-81cb2b7df460",
+      "name": "AI Agent",
+      "alwaysOutputData": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        240
+      ],
+      "id": "f7ed5ade-ca26-438a-bc5b-533bb37d8db1",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Srp5XJpKYMONQPxl",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        16,
+        256
+      ],
+      "id": "ae9b1d16-6280-4136-bc41-759587429bc1",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"intent\": {\n      \"type\": \"string\"\n    },\n    \"customer_type\": {\n      \"type\": \"string\"\n    },\n    \"service_interested\": {\n      \"type\": \"string\"\n    },\n    \"budget\": {\n      \"type\": \"number\"\n    },\n    \"timeline\": {\n      \"type\": \"string\"\n    },\n    \"updated_field\": {\n      \"type\": \"string\"\n    },\n    \"updated_value\": {\n      \"type\": \"string\"\n    },\n    \"lead_score\": {\n      \"type\": \"number\"\n    },\n    \"priority\": {\n      \"type\": \"string\"\n    },\n    \"action\": {\n      \"type\": \"string\"\n    },\n    \"reason\": {\n      \"type\": \"string\"\n    },\n    \"customer_response\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"intent\",\n    \"customer_type\",\n    \"service_interested\",\n    \"budget\",\n    \"timeline\",\n    \"updated_field\",\n    \"updated_value\",\n    \"lead_score\",\n    \"priority\",\n    \"action\",\n    \"reason\",\n    \"customer_response\"\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        240
+      ],
+      "id": "aa293197-365f-4cde-905b-69f61db8672d",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.action }}",
+                    "rightValue": "Update Customer",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "98bb8ffd-4d67-4f37-972d-d14ec299898f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "fb45d4f4-aa26-425f-a44a-4e3ff48baae4",
+                    "leftValue": "={{ $json.output.action }}",
+                    "rightValue": "=Escalate to Human",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c597e598-4c74-4467-826b-affb8c29cf98",
+                    "leftValue": "={{ $json.output.action }}",
+                    "rightValue": "=Create Lead",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "allMatchingOutputs": true
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        16
+      ],
+      "id": "bf228f71-8ee5-4a0a-9ec7-83657ccfe740",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1lzJaFU6xrjChRKhVHFm_CLXieWET_GWole3pF40woC4",
+          "mode": "list",
+          "cachedResultName": "AI Sales & Customer Support Automation Agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lzJaFU6xrjChRKhVHFm_CLXieWET_GWole3pF40woC4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lzJaFU6xrjChRKhVHFm_CLXieWET_GWole3pF40woC4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Customer ID": "={{ $('Webhook').item.json.body.customer_id }}",
+            "Customer Name": "={{ $('Webhook').item.json.body.full_name }}",
+            "Email": "={{ $('Webhook').item.json.body.email }}",
+            " Phone Number": "={{ $('Webhook').item.json.body.phone }}",
+            "Company ": "={{ $('Webhook').item.json.body.company }}",
+            "Source ": "={{ $('Webhook').item.json.body.source }}",
+            "Service Interested ": "={{ $('AI Agent').item.json.output.service_interested }}",
+            "Lead Score": "={{ $('AI Agent').item.json.output.lead_score }}",
+            "Priority ": "={{ $('AI Agent').item.json.output.priority }}",
+            "Status": "New"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " Phone Number",
+              "displayName": " Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company ",
+              "displayName": "Company ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source ",
+              "displayName": "Source ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Service Interested ",
+              "displayName": "Service Interested ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority ",
+              "displayName": "Priority ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        688,
+        176
+      ],
+      "id": "af0d3d16-d6c7-44a8-95da-5ee7257b0ccb",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i6esJNkFcV0YOMWy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8db31a53-e659-4287-ba80-970b800dbdd9",
+              "leftValue": "={{ $('AI Agent').item.json.output.lead_score }}",
+              "rightValue": 75,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        240
+      ],
+      "id": "11c6fe7c-f045-433c-8a9b-2b3f5e879b7f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "8759355409",
+        "text": "=🚨 HUMAN ASSISTANCE REQUIRED\n\nCustomer: {{ $('Webhook').item.json.body.full_name }}\nEmail: {{ $('Webhook').item.json.body.email }}\nPhone: {{ $('Webhook').item.json.body.phone }}\n\nIntent: {{ $('AI Agent').item.json.output.intent }}\nPriority: {{ $('AI Agent').item.json.output.priority }}\n\nReason:\n{{ $('AI Agent').item.json.output.reason }}\n\nCustomer Message:\n{{ $('AI Agent').item.json.output.customer_response }}\n\nPlease review and handle this customer manually.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        16
+      ],
+      "id": "4c7bfd1b-aa86-43d0-aa32-c9c59b9542d4",
+      "name": "Send a text message1",
+      "webhookId": "e6ade2b2-25bd-4997-91e9-9ddce5952326",
+      "credentials": {
+        "telegramApi": {
+          "id": "dkDrWxdCmUK6pqkU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1lzJaFU6xrjChRKhVHFm_CLXieWET_GWole3pF40woC4",
+          "mode": "list",
+          "cachedResultName": "AI Sales & Customer Support Automation Agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lzJaFU6xrjChRKhVHFm_CLXieWET_GWole3pF40woC4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lzJaFU6xrjChRKhVHFm_CLXieWET_GWole3pF40woC4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Customer ID": "={{ $('Webhook').item.json.body.customer_id }}",
+            "Customer Name": "={{ $('Webhook').item.json.body.full_name }}",
+            "Email": "={{ $('Webhook').item.json.body.email }}",
+            " Phone Number": "={{ $json.output.updated_value }}",
+            "Company ": "={{ $('Webhook').item.json.body.company }}",
+            "Source ": "={{ $('Webhook').item.json.body.source }}",
+            "Service Interested ": "={{ $('AI Agent').item.json.output.service_interested }}",
+            "Lead Score": "={{ $('AI Agent').item.json.output.lead_score }}",
+            "Priority ": "={{ $('AI Agent').item.json.output.priority }}",
+            "Status": "Old"
+          },
+          "matchingColumns": [
+            "Customer ID"
+          ],
+          "schema": [
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": " Phone Number",
+              "displayName": " Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Company ",
+              "displayName": "Company ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source ",
+              "displayName": "Source ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Service Interested ",
+              "displayName": "Service Interested ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Priority ",
+              "displayName": "Priority ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        -192
+      ],
+      "id": "8f473fc9-cb24-42cf-9c75-69ee6cbc2b0d",
+      "name": "Append or update row in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i6esJNkFcV0YOMWy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "8759355409",
+        "text": "=🚨 NEW QUALIFIED LEAD\n\n👤 CUSTOMER\nName: {{ $json['Customer Name'] }}\nCustomer ID: {{ $json['Customer ID'] }}\nEmail: {{ $json.Email }}\nPhone: {{ $json[' Phone Number'] }}\nCompany: {{ $json['Company '] }}\n\n💼 OPPORTUNITY\nService: {{ $json['Service Interested '] }}\nBudget: ${{ $('Switch').item.json.output.budget }}\nTimeline: {{ $('Switch').item.json.output.timeline }}\n\n📊 QUALIFICATION\nLead Score: {{ $json['Lead Score'] }}/100\nPriority: {{ $json['Priority '] }}\nIntent: {{ $('AI Agent').item.json.output.intent }}\n\n💬 CUSTOMER MESSAGE\n{{ $('Webhook').item.json.body.message }}\n\n🤖 AI RECOMMENDATION\n{{ $('AI Agent').item.json.output.reason }}\n\n📌 ACTION\nCreate Lead\n\n🔗 Source: https://tobeaiautomator-1063004.postman.co/workspace/c4a8e131-dbe0-4abc-853d-7f4acf99e09f/request/57592324-746ab8b8-278d-47a0-8810-553eca2b83fe?tab=body",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        272
+      ],
+      "id": "0e659be6-41f8-4d64-b762-2ff89f1c4a44",
+      "name": "Send a text message",
+      "webhookId": "a0ad1a8a-0ee6-44b3-b631-95bae417645f",
+      "alwaysOutputData": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "dkDrWxdCmUK6pqkU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "79ca19d3-e042-4cf3-a62c-6187f1d927c2",
+              "name": "Prepare Response",
+              "value": "={{ $('Webhook').item.json.body.customer_id }}\n{{ $('Webhook').item.json.body.full_name }}\n{{ $('Webhook').item.json.body.email }}\n{{ $('AI Agent').item.json.output.customer_response }}\n{{ $('AI Agent').item.json.output.intent }}\n{{ $('AI Agent').item.json.output.priority }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        544,
+        320
+      ],
+      "id": "37d9b965-829a-4bef-96b8-0e36aca859e1",
+      "name": "Edit Fields",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "Thank you for contacting us",
+        "emailType": "text",
+        "message": "=Hi {{ $('Webhook').item.json.body.full_name }},\n\n{{ $('AI Agent').item.json.output.customer_response }}\n\nThank you for reaching out!\n\nBest regards,\nCustomer Support Team",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        416
+      ],
+      "id": "b5a519b0-a223-4caa-9a44-5ee45daf1719",
+      "name": "Send a message1",
+      "webhookId": "d76d6da5-930d-44eb-8f2c-25e89f35d71f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Br9gaFcWHcrLGMYn",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "17a743b3-6a0f-4fe8-a71c-6f1ab0d6753c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3a4267087a1cd4546d5f78d48d918a3a754654182d2d302f092325ad6c1d9654"
+  },
+  "nodeGroups": [],
+  "id": "GMis7H7X8P45mhU3",
+  "tags": []
+}
