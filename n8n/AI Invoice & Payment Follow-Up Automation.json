@@ -1,0 +1,559 @@
+{
+  "name": "AI Invoice & Payment Follow-Up Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -640,
+        16
+      ],
+      "id": "32d174ea-7c9f-441e-89df-f9b2246d1ff9",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following invoice.\n\nInvoice ID:\n{{ $json['Invoice ID'] }}\n\nCustomer ID:\n{{ $json['Customer ID'] }}\n\nCustomer Name:\n{{ $json['Customer Name'] }}\n\nCustomer Email:\n{{ $json.Email }}\n\nCompany:\n{{ $json.Company }}\n\nInvoice Amount:\n{{ $json['Invoice Amount'] }}\n\nIssue Date:\n{{ $json['Issue Date'] }}\n\nDue Date:\n{{ $json['Due Date'] }}\n\nPayment Status:\n{{ $json.Status }}\n\nPayment Date:\n{{ $json['Payment Date'] }}\n\nToday's Date:\n{{ $now }}\n\nDetermine:\n\n1. Invoice status\n2. Days until due or days overdue\n3. Priority\n4. Appropriate action\n5. Reason for the decision\n6. Customer payment message if required\n7. Finance notification if required",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an AI Invoice Monitoring and Payment Follow-Up Agent for a business.\n\nYour job is to analyze invoice information and determine the current payment status, priority, and appropriate business action.\n\n==================================================\nYOUR RESPONSIBILITIES\n==================================================\n\n1. Analyze the invoice information provided.\n\n2. Determine whether the invoice is:\n   - Paid\n   - Due Soon\n   - Overdue\n\n3. Calculate the number of days until the invoice is due or the number of days it is overdue.\n\n4. Determine the priority of the invoice.\n\n5. Determine the appropriate business action.\n\n6. Generate a professional customer payment message when a reminder is required.\n\n7. Generate a concise internal finance notification when the invoice requires human attention.\n\n8. Never invent invoice information.\n\n9. Never change the invoice amount, invoice ID, customer information, payment status, or due date.\n\n10. Do not send a payment reminder if the invoice is already paid.\n\n11. Keep customer-facing messages professional, polite, and concise.\n\n\n==================================================\nINVOICE STATUS RULES\n==================================================\n\nPAID:\n\nUse \"Paid\" when the payment status indicates that the invoice has already been paid.\n\nAction:\n\"Mark as Paid\"\n\nDo not send a payment reminder.\n\n\nDUE SOON:\n\nUse \"Due Soon\" when:\n- The invoice is unpaid.\n- The due date is in the future.\n- The invoice is due within 7 days.\n\nAction:\n\"Send Payment Reminder\"\n\n\nOVERDUE:\n\nUse \"Overdue\" when:\n- The invoice is unpaid.\n- The due date has already passed.\n\nAction:\n\"Send Overdue Reminder\"\n\n\n==================================================\nPRIORITY RULES\n==================================================\n\nLOW:\n- Invoice is due in 4-7 days.\n\nMEDIUM:\n- Invoice is due in 1-3 days.\n- Invoice is 1-7 days overdue.\n\nHIGH:\n- Invoice is 8-14 days overdue.\n\nCRITICAL:\n- Invoice is more than 14 days overdue.\n\nFor HIGH or CRITICAL invoices, the finance team should be notified.\n\n\n==================================================\nACTION RULES\n==================================================\n\nThe \"Action\" field MUST be exactly one of:\n\nMark as Paid\nSend Payment Reminder\nSend Overdue Reminder\nNotify Finance\n\n\nUse:\n\n\"Mark as Paid\"\nwhen the invoice is already paid.\n\n\"Send Payment Reminder\"\nwhen an unpaid invoice is due within 7 days.\n\n\"Send Overdue Reminder\"\nwhen an unpaid invoice is past its due date.\n\n\"Notify Finance\"\nwhen an invoice is more than 7 days overdue and requires finance-team attention.\n\n\n==================================================\nDATE CALCULATION\n==================================================\n\nCompare the invoice due date with today's date.\n\nIf the due date is in the future:\nCalculate the number of days until the due date.\n\nIf the due date is today:\nDays difference = 0.\n\nIf the due date is in the past:\nCalculate the number of days overdue.\n\nDo not invent dates.\n\n\n==================================================\nCUSTOMER MESSAGE\n==================================================\n\nIf the action is:\n\n\"Send Payment Reminder\"\n\nGenerate a friendly reminder.\n\nExample:\n\nHi John,\n\nThis is a friendly reminder that invoice INV-1001\nfor $1,500 is due on August 25, 2026.\n\nPlease let us know if you have already made the payment.\n\nThank you.\n\n\nIf the action is:\n\n\"Send Overdue Reminder\"\n\nGenerate a polite overdue reminder.\n\nExample:\n\nHi John,\n\nThis is a reminder that invoice INV-1001\nfor $1,500 was due on August 20, 2026.\n\nOur records currently show that the invoice remains unpaid.\n\nPlease let us know if payment has already been made.\n\nThank you.\n\n\nIf the invoice is paid:\n\ncustomer_message = \"No message required.\"\n\n\n==================================================\nFINANCE NOTIFICATION\n==================================================\n\nFor HIGH or CRITICAL invoices, generate an internal finance notification.\n\nExample:\n\n🚨 OVERDUE INVOICE\n\nInvoice: INV-1003\nCustomer: Mike Davis\nAmount: $2,500\nDue Date: August 10, 2026\nDays Overdue: 11\nPriority: HIGH\n\nAction:\nFinance team follow-up required.\n\n\n==================================================\nIMPORTANT RULES\n==================================================\n\nNever invent:\n\n- Invoice ID\n- Customer name\n- Customer email\n- Invoice amount\n- Due date\n- Payment status\n- Payment date\n\nUse only the information provided.\n\nIf required invoice information is missing or contradictory, do not guess.\n\nIf the invoice status is already Paid, never send a payment reminder.\n\n\n==================================================\nOUTPUT\n==================================================\n\nReturn the result using exactly these fields:\n\ninvoice_status\ndays_difference\npriority\naction\nreason\ncustomer_message\nfinance_notification"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -128,
+        16
+      ],
+      "id": "cadf0ab2-6676-41a2-8334-373f300fd3a4",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -256,
+        240
+      ],
+      "id": "bf02154f-b07b-4a7e-a954-28251b6f985e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Srp5XJpKYMONQPxl",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -64,
+        256
+      ],
+      "id": "119d17f9-ec8c-40d2-99c4-bd3913709c24",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1D1TeAIKLXYZIigaZbegJSlrxDEqcYt0NzqL9DzMKHko",
+          "mode": "list",
+          "cachedResultName": "AI Invoice & Payment Follow-Up Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D1TeAIKLXYZIigaZbegJSlrxDEqcYt0NzqL9DzMKHko/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D1TeAIKLXYZIigaZbegJSlrxDEqcYt0NzqL9DzMKHko/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -400,
+        16
+      ],
+      "id": "11c9a8c9-7c11-4379-9861-3d5d46e2fd14",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i6esJNkFcV0YOMWy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"invoice_status\": {\n      \"type\": \"string\"\n    },\n    \"days_difference\": {\n      \"type\": \"number\"\n    },\n    \"priority\": {\n      \"type\": \"string\"\n    },\n    \"action\": {\n      \"type\": \"string\"\n    },\n    \"reason\": {\n      \"type\": \"string\"\n    },\n    \"customer_message\": {\n      \"type\": \"string\"\n    },\n    \"finance_notification\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"invoice_status\",\n    \"days_difference\",\n    \"priority\",\n    \"action\",\n    \"reason\",\n    \"customer_message\",\n    \"finance_notification\"\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        112,
+        224
+      ],
+      "id": "8b29a73d-1bac-4256-acf4-89e146b9c502",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.invoice_status }}",
+                    "rightValue": "Paid",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c101aa96-2f39-4736-9de5-791f44f9e710"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1350021f-466a-40ce-a357-f014c8b26208",
+                    "leftValue": "={{ $json.output.invoice_status }}",
+                    "rightValue": "Due Soon",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b8c0be30-eedb-43a0-902e-60219440710e",
+                    "leftValue": "={{ $json.output.invoice_status }}",
+                    "rightValue": "Overdue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ],
+      "id": "09a652a7-8d2f-434d-b15a-71779bc25b63",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1D1TeAIKLXYZIigaZbegJSlrxDEqcYt0NzqL9DzMKHko",
+          "mode": "list",
+          "cachedResultName": "AI Invoice & Payment Follow-Up Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D1TeAIKLXYZIigaZbegJSlrxDEqcYt0NzqL9DzMKHko/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D1TeAIKLXYZIigaZbegJSlrxDEqcYt0NzqL9DzMKHko/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice ID": "={{ $('Get row(s) in sheet').item.json['Invoice ID'] }}",
+            "Customer ID": "={{ $('Get row(s) in sheet').item.json['Customer ID'] }}",
+            "Customer Name": "={{ $('Get row(s) in sheet').item.json['Customer Name'] }}",
+            "Email": "={{ $('Get row(s) in sheet').item.json.Email }}",
+            "Company": "={{ $('Get row(s) in sheet').item.json.Company }}",
+            "Invoice Amount": "={{ $('Get row(s) in sheet').item.json['Invoice Amount'] }}",
+            "Issue Date": "={{ $('Get row(s) in sheet').item.json['Issue Date'] }}",
+            "Due Date": "={{ $('Get row(s) in sheet').item.json['Due Date'] }}",
+            "Status": "={{ $('Get row(s) in sheet').item.json.Status }}",
+            "Payment Date": "={{ $('Get row(s) in sheet').item.json['Payment Date'] }}"
+          },
+          "matchingColumns": [
+            "Invoice ID"
+          ],
+          "schema": [
+            {
+              "id": "Invoice ID",
+              "displayName": "Invoice ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice Amount",
+              "displayName": "Invoice Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Issue Date",
+              "displayName": "Issue Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment Date",
+              "displayName": "Payment Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        -160
+      ],
+      "id": "c7c0e28a-453f-4a15-9ddb-c035aef4aca5",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i6esJNkFcV0YOMWy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get row(s) in sheet').item.json.Email }}",
+        "subject": "=Payment Reminder – Invoice {{ $('Get row(s) in sheet').item.json['Invoice ID'] }}",
+        "emailType": "text",
+        "message": "=Hi {{ $('Get row(s) in sheet').item.json['Customer Name'] }},\n\nThis is a friendly reminder that your invoice is due soon.\n\nInvoice: {{ $('Get row(s) in sheet').item.json['Invoice ID'] }}\nAmount: {{ $('Get row(s) in sheet').item.json['Invoice Amount'] }}\nDue Date: {{ $('Get row(s) in sheet').item.json['Due Date'] }}\n\nOur records currently show that this invoice has not yet\nbeen marked as paid.\n\nIf you have already made the payment, please disregard\nthis message or let us know so we can update our records.\n\nThank you,\nAccounts Team",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        80
+      ],
+      "id": "ee273beb-c466-430c-9dd3-7eb9468615f4",
+      "name": "Send a message",
+      "webhookId": "677df5e6-0fd5-4923-a2cf-ee18abc56564",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Br9gaFcWHcrLGMYn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get row(s) in sheet').item.json.Email }}",
+        "subject": "=Payment Reminder – Overdue Invoice {{ $('Get row(s) in sheet').item.json['Invoice ID'] }}",
+        "emailType": "text",
+        "message": "=Hi {{ $('Get row(s) in sheet').item.json['Customer Name'] }},\n\nWe’re following up regarding your overdue invoice.\n\nInvoice: {{ $('Get row(s) in sheet').item.json['Invoice ID'] }}\nAmount: ${{ $('Get row(s) in sheet').item.json['Invoice Amount'] }}\nDue Date: {{ $('Get row(s) in sheet').item.json['Due Date'] }}\nDays Overdue: {{ $('AI Agent').item.json.output.days_difference }}\n\nOur records currently show that this invoice remains unpaid.\n\nIf you have already made the payment, please reply to this\nemail or contact our accounts team so we can update our records.\n\nIf payment is still pending, we kindly ask you to arrange\npayment at your earliest convenience.\n\nThank you,\nAccounts Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        320
+      ],
+      "id": "46b2175d-a600-4be7-9760-fbc17644e3fa",
+      "name": "Send a message1",
+      "webhookId": "125eb2eb-5843-4b6d-bf6e-b20df449512b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Br9gaFcWHcrLGMYn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "8759355409",
+        "text": "=🚨 FINANCE ALERT\n\nOVERDUE INVOICE REQUIRES ATTENTION\n\n━━━━━━━━━━━━━━━━━━\n\n📄 INVOICE\nInvoice ID: {{ $('Get row(s) in sheet').item.json['Invoice ID'] }}\n\n👤 CUSTOMER\nName: {{ $('Get row(s) in sheet').item.json['Customer Name'] }}\nCompany: {{ $('Get row(s) in sheet').item.json.Company }}\nEmail: {{ $('Get row(s) in sheet').item.json.Email }}\n\n💰 PAYMENT\nAmount: ${{ $('Get row(s) in sheet').item.json['Invoice Amount'] }}\nDue Date: {{ $('Get row(s) in sheet').item.json['Due Date'] }}\nDays Overdue: {{ $('AI Agent').item.json.output.days_difference }}\n\n📊 PRIORITY\n{{ $('AI Agent').item.json.output.priority }}\n\n🤖 AI ASSESSMENT\n{{ $('AI Agent').item.json.output.reason }}\n\n📌 ACTION\nFinance team follow-up required.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        928,
+        256
+      ],
+      "id": "6d27b896-279b-4cec-a1ab-1bb4d0387579",
+      "name": "Send a text message",
+      "webhookId": "d51d1d27-f5ff-40f7-8485-50f8c26121ed",
+      "alwaysOutputData": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "dkDrWxdCmUK6pqkU",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a5395b22-6411-4812-a4f0-34567480afe5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3a4267087a1cd4546d5f78d48d918a3a754654182d2d302f092325ad6c1d9654"
+  },
+  "nodeGroups": [],
+  "id": "Rl396KnfTYOYheSi",
+  "tags": []
+}
