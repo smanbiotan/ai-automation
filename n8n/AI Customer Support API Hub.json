@@ -1,0 +1,1174 @@
+{
+  "name": "AI Customer Support API Hub",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "77761bc7-48e5-463d-8fb5-6282be006612",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "382f6b12-ffc5-4b71-8245-5fdea34b691f",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -736,
+        80
+      ],
+      "webhookId": "77761bc7-48e5-463d-8fb5-6282be006612"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "aedfba79-4975-4cad-a705-50d23d9343fe",
+              "leftValue": "={{ $json.body.customer_name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "72a0c551-2ce7-4e3a-8850-42912bb0c8a1",
+              "leftValue": "={{ $json.body.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "9b6e9236-7683-4abd-9bc8-b5e22cfc2bfb",
+              "leftValue": "={{ $json.body.message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4cd46c0e-f517-4026-b832-c4954b46240a",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -496,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following customer request.\n\nCustomer Name:\n{{ $json.body.customer_name }}\n\nEmail:\n{{ $json.body.email }}\n\nCustomer Message:\n{{ $json.body.message }}\n\nDetermine:\n\n1. The customer's intent.\n2. The order ID if provided.\n3. The priority.\n4. Whether an external API lookup is required.\n5. Whether human intervention is required.\n6. A short response to the customer.\n\nDo not invent missing information.\n\nReturn the result using the required structured output format.\n",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "# AI Customer Support & Intent Classification Agent\n\nYou are an AI customer support assistant for a business.\n\nYour job is to analyze incoming customer requests received through an API/webhook and determine what the customer needs.\n\nYou are part of an n8n automation workflow. Your output will be used by other automation nodes, so you must follow the required output structure exactly.\n\n## YOUR RESPONSIBILITIES\n\nYou must:\n\n1. Understand the customer's message.\n2. Identify the customer's intent.\n3. Extract important information from the message.\n4. Identify an order ID when one is provided.\n5. Determine the appropriate priority.\n6. Determine whether the request requires an external API lookup.\n7. Generate a short, professional response when appropriate.\n8. Never invent customer, order, payment, or shipping information.\n\n## INTENT CATEGORIES\n\nClassify every request into exactly one of these categories:\n\n* ORDER_STATUS\n* REFUND\n* GENERAL_QUESTION\n* COMPLAINT\n* OTHER\n\n### ORDER_STATUS\n\nUse when the customer wants information about an order, shipment, delivery, tracking, or order progress.\n\n### REFUND\n\nUse when the customer wants to return a product, cancel a purchase, or request a refund.\n\n### GENERAL_QUESTION\n\nUse for normal questions about products, services, business information, or policies.\n\n### COMPLAINT\n\nUse when the customer is reporting a serious problem, dissatisfaction, or negative experience.\n\n### OTHER\n\nUse when the request does not clearly fit the categories above.\n\n## ORDER ID EXTRACTION\n\nLook for order IDs in the customer's message. If no order ID is provided, return null. Never create an order ID.\n\n## PRIORITY\n\nLOW: General questions and non-urgent requests.\nMEDIUM: Normal order issues, delivery questions, or standard support requests.\nHIGH: Serious complaints, urgent order problems, repeated issues, or situations that may require immediate human attention.\n\n## API LOOKUP\n\nSet `requires_api_lookup` to true when the request requires information that must be retrieved from an external system. The n8n workflow will perform the actual API request. You must NOT pretend that you retrieved information from an API.\n\n## HUMAN ESCALATION\n\nSet `requires_human` to true when the customer has a serious complaint, requests a refund that requires human approval, is angry or threatening legal action, the request cannot safely be handled automatically, or important information is unavailable. Otherwise set it to false.\n\n## RESPONSE\n\nGenerate a short response that acknowledges the customer's request. If information is missing, politely request the missing information. Do not claim that an order was found unless the external API has actually returned the information.\n\n## IMPORTANT RULES\n\n* Never invent information.\n* Never invent order status.\n* Never invent tracking numbers.\n* Never invent refund approval.\n* Never claim an API request was completed.\n* Never claim an order was found without API data.\n* Never process a refund automatically.\n* Keep responses concise.\n* Return valid structured output.\n* Follow the output schema exactly.\n\n## OUTPUT\n\nReturn the following information:\n\n* customer_name\n* email\n* intent\n* order_id\n* priority\n* requires_api_lookup\n* requires_human\n* response\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "3400511c-ede9-4eed-bae9-481b4fa60545",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -272,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "4445dd87-16b4-4f1e-b498-740efa714ae1",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        256
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "qHsvO9lebWVYpHpZ",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"customer_name\": {\n      \"type\": \"string\"\n    },\n    \"email\": {\n      \"type\": [\"string\", \"null\"]\n    },\n    \"intent\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"ORDER_STATUS\",\n        \"REFUND\",\n        \"GENERAL_QUESTION\",\n        \"COMPLAINT\",\n        \"OTHER\"\n      ]\n    },\n    \"order_id\": {\n      \"type\": [\"string\", \"null\"]\n    },\n    \"priority\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"LOW\",\n        \"MEDIUM\",\n        \"HIGH\"\n      ]\n    },\n    \"requires_api_lookup\": {\n      \"type\": \"boolean\"\n    },\n    \"requires_human\": {\n      \"type\": \"boolean\"\n    },\n    \"response\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"customer_name\",\n    \"email\",\n    \"intent\",\n    \"order_id\",\n    \"priority\",\n    \"requires_api_lookup\",\n    \"requires_human\",\n    \"response\"\n  ]\n}"
+      },
+      "id": "d8c72473-38bf-4d7f-b4c7-37d743287fb4",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -112,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "ORDER_STATUS",
+                    "rightValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "2ccd487c-3583-4a7e-8a1a-925c6e1a061f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4b68bb8c-d5af-4353-8a08-bc293bdedf6a",
+                    "leftValue": "REFUND",
+                    "rightValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6888432d-724d-4703-8544-d10aa9ce784a",
+                    "leftValue": "COMPLAINT",
+                    "rightValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "1f24def7-20ac-4ace-8f11-c4c315960b58",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://dummyjson.com/c/542c-8391-4cc0-b176",
+        "options": {}
+      },
+      "id": "d87c7d90-880f-4b1a-b1f3-7d9cca9cb84b",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        336,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Create a natural customer support response using the information below.\n\nCustomer Name:\n{{ $('Webhook').item.json.body.customer_name }}\n\nCustomer Message:\n{{ $('Webhook').item.json.body.message }}\n\nAPI Result:\n{{JSON.stringify($json)}}\n\nAnswer the customer's question using only the API result.\n\nDo not invent missing information.\n\nReturn only the message that should be sent to the customer.\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a customer support response assistant.\n\nYour job is to turn API results into a short, clear, and natural response for the customer.\n\nThe API data you receive is the only source of truth for information about the customer's order or product.\n\n## RULES\n\n* Never invent information.\n* Never change values returned by the API.\n* Never claim information that is not present in the API response.\n* If the API indicates that the requested item was not found, clearly tell the customer.\n* If the API request failed or returned an error, apologize briefly and explain that the information could not be retrieved.\n* Keep the response conversational and concise.\n* Do not mention APIs, HTTP requests, n8n, workflows, nodes, or internal systems.\n* Do not expose technical information to the customer.\n* Use the customer's name when available.\n* Answer the customer's original question directly.\n\nKeep responses to 1-3 sentences unless more detail is necessary.\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "d205d7d9-cc7c-4e26-b57f-1924cc3c2616",
+      "name": "Basic LLM Chain1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        672,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c830a94c-600c-4aba-9fd6-4a116aad514a",
+      "name": "Google Gemini Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        736,
+        -32
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Qi90xQU8TgJYss8N",
+          "name": "Google Gemini(PaLM) Api account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appEL26fh7RensfG9",
+          "mode": "list",
+          "cachedResultName": "AI Customer Support API Hub",
+          "cachedResultUrl": "https://airtable.com/appEL26fh7RensfG9"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2q0gzv2sht6C62",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appEL26fh7RensfG9/tbl2q0gzv2sht6C62"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Webhook').item.json.body.customer_name }}",
+            "Email": "={{ $('Webhook').item.json.body.email }}",
+            "Message": "={{ $('Webhook').item.json.body.message }}",
+            "Intent": "={{ $('Basic LLM Chain').item.json.output.intent }}",
+            "Order ID": "={{ $('Basic LLM Chain').item.json.output.order_id }}",
+            "Priority": "={{ $('Basic LLM Chain').item.json.output.priority }}",
+            "API Lookup": "={{ String($('Basic LLM Chain').item.json.output.requires_api_lookup) }}",
+            "Human": "={{ String($('Basic LLM Chain').item.json.output.requires_human) }}",
+            "Status": "={{ $('HTTP Request').item.json.status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "API Lookup",
+              "displayName": "API Lookup",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Human",
+              "displayName": "Human",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "c81ae6dd-b388-4278-b57b-ec34632acf7f",
+      "name": "Create a record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1136,
+        -144
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "Sr7GY7CoZLXNh9tS",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"message\": \"Request received and processed.\"\n}",
+        "options": {}
+      },
+      "id": "68233827-5c5f-4a23-b771-7ac2cd00fcf2",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1248,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a847351e-869d-4f6d-bbd9-632070e0426f",
+              "name": "customer_name",
+              "value": "={{ $('Webhook').item.json.body.customer_name }}",
+              "type": "string"
+            },
+            {
+              "id": "bddf081c-c302-40b2-b871-ced639a231ce",
+              "name": "email",
+              "value": "={{ $('Webhook').item.json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "f40a3642-1ba4-4aad-a072-3524c35907ba",
+              "name": "order_id",
+              "value": "={{ $('Basic LLM Chain').item.json.output.order_id }}",
+              "type": "string"
+            },
+            {
+              "id": "1bd30e93-e3b4-448f-9d26-69821164e091",
+              "name": "intent",
+              "value": "={{ $('Basic LLM Chain').item.json.output.intent }}",
+              "type": "string"
+            },
+            {
+              "id": "292d979c-9993-4dde-a287-0a28887419d8",
+              "name": "priority ",
+              "value": "={{ $('Basic LLM Chain').item.json.output.priority }}",
+              "type": "string"
+            },
+            {
+              "id": "5675cc7c-d6b5-4f7b-97e3-be69ff3348b3",
+              "name": "status",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "122cf157-bdae-4379-933b-f66942c21d49",
+              "name": "message",
+              "value": "={{ $('Webhook').item.json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "c8776fce-b0a5-471e-b971-7e17a3ecaf5d",
+              "name": "Status",
+              "value": " PENDING REVIEW",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "daab1411-8465-4d3e-b58d-2a3b0c77af4f",
+      "name": "REFUND",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        352,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appEL26fh7RensfG9",
+          "mode": "list",
+          "cachedResultName": "AI Customer Support API Hub",
+          "cachedResultUrl": "https://airtable.com/appEL26fh7RensfG9"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2q0gzv2sht6C62",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appEL26fh7RensfG9/tbl2q0gzv2sht6C62"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.customer_name }}",
+            "Email": "={{ $json.email }}",
+            "Order ID": "={{ $json.order_id }}",
+            "Intent": "={{ $json.intent }}",
+            "Message": "={{ $json.message }}",
+            "Priority": "={{ $json['priority '] }}",
+            "Human": "={{ String($('Switch').item.json.output.requires_human) }}",
+            "API Lookup": "={{ String($('Switch').item.json.output.requires_api_lookup) }}",
+            "Status": "={{ $json.status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "API Lookup",
+              "displayName": "API Lookup",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Human",
+              "displayName": "Human",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "5bb5eab1-f1f4-4712-8173-ced941fcac26",
+      "name": "Create a record1",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        64
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "Sr7GY7CoZLXNh9tS",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "8759355409",
+        "text": "=🚨 REFUND REQUEST\n\nCustomer: {{ $('REFUND').item.json.customer_name }}\nEmail: {{ $('REFUND').item.json.email }}\nOrder ID: {{ $('REFUND').item.json.order_id }}\n\nCustomer Message:\n{{$node[\"Webhook\"].json.body.message}}\n\nPriority: {{ $('REFUND').item.json['priority '] }}\nStatus: {{ $('REFUND').item.json.status }}\n\nPlease review this refund request.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c3485609-19eb-4207-be10-49430c12561e",
+      "name": "Send a text message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        64
+      ],
+      "webhookId": "b8b5426e-5f7f-437d-86cb-78d9a4dcca3a",
+      "credentials": {
+        "telegramApi": {
+          "id": "fSZ9f6B4nCHiltq2",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7bf75bdc-fafe-4897-8488-7e9d4071fd3a",
+              "name": "customer_name",
+              "value": "={{ $json.output.customer_name }}",
+              "type": "string"
+            },
+            {
+              "id": "e6d19135-4b44-414b-b27f-9b8b6dbc0490",
+              "name": "email",
+              "value": "={{ $json.output.email }}",
+              "type": "string"
+            },
+            {
+              "id": "43ad85f3-9682-4b3c-8858-58cbc7120709",
+              "name": "order_id",
+              "value": "={{ $json.output.order_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c190579f-f4c6-450b-8f9b-abd34c4c1515",
+              "name": "intent",
+              "value": "={{ $json.output.intent }}",
+              "type": "string"
+            },
+            {
+              "id": "7c02db7d-1f4b-4b97-b333-ed0d7395af40",
+              "name": "priority",
+              "value": "={{ $json.output.priority }}",
+              "type": "string"
+            },
+            {
+              "id": "25f3cc7d-d446-4dea-b778-3cd69988d545",
+              "name": "status",
+              "value": "ESCALATED",
+              "type": "string"
+            },
+            {
+              "id": "a09a70fc-6b9c-4f25-a074-1a60ac7e6130",
+              "name": "message",
+              "value": "={{ $('Webhook').item.json.body.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "04bbe209-8bc4-415f-97cd-77052ccee9a9",
+      "name": "COMPLAINT",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        320,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appEL26fh7RensfG9",
+          "mode": "list",
+          "cachedResultName": "AI Customer Support API Hub",
+          "cachedResultUrl": "https://airtable.com/appEL26fh7RensfG9"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2q0gzv2sht6C62",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appEL26fh7RensfG9/tbl2q0gzv2sht6C62"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.customer_name }}",
+            "Email": "={{ $json.email }}",
+            "Message": "={{ $json.message }}",
+            "Intent": "={{ $json.intent }}",
+            "Order ID": "={{ $json.order_id }}",
+            "Priority": "={{ $json.priority }}",
+            "Human": "={{ $('Switch').item.json.output.requires_human }}",
+            "API Lookup": "={{ $('Switch').item.json.output.requires_api_lookup }}",
+            "Status": "={{ $json.status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "API Lookup",
+              "displayName": "API Lookup",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Human",
+              "displayName": "Human",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "7e5b79e6-2036-4167-a5a6-d34353e22c31",
+      "name": "Create a record2",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        272
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "Sr7GY7CoZLXNh9tS",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "8759355409",
+        "text": "=🚨 CUSTOMER COMPLAINT\n\nCustomer: {{ $json.fields.Name }}\nEmail: {{ $json.fields.Email }}\n\nMessage:\n{{$node[\"Webhook\"].json.body.message}}\n\nPriority: {{ $json.fields.Priority }}\nStatus: {{ $json.fields.Status }}\n\n⚠️ Human follow-up required.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "31587d81-4d57-4fc0-b2ce-a16fcf8b6d0b",
+      "name": "Send a text message1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        272
+      ],
+      "webhookId": "8b62201f-863d-4455-b125-4926fc8d71fa",
+      "credentials": {
+        "telegramApi": {
+          "id": "fSZ9f6B4nCHiltq2",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Missing required customer information\"\n}",
+        "options": {}
+      },
+      "id": "5f9d43e4-0491-4e55-a9e8-bbeb08417c53",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -576,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# AI Customer Support API Hub\n- An AI-powered support automation that uses n8n, Webhooks, HTTP Requests, and AI to automatically receive, understand, and respond to customer inquiries.\n\nHow it helps the business:\n\n Automates repetitive customer questions\n Saves employees' time\n Provides faster responses\n Retrieves information from business APIs automatically\n Escalates refunds and serious complaints to human staff\n Provides 24/7 customer support\n\nMain benefit: It reduces manual support work while allowing employees to focus on more important customer issues.\n",
+        "height": 704,
+        "width": 2400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -944,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "84e4ab76-645c-4e53-a254-1b46fed44b9b",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "REFUND",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "COMPLAINT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "REFUND": {
+      "main": [
+        [
+          {
+            "node": "Create a record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COMPLAINT": {
+      "main": [
+        [
+          {
+            "node": "Create a record2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "26b6610e-e3ee-44ad-ae54-6abdfea17dcc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c56f78e6b4f682f20134c6617b65042427c5fa253bc9f45ea36be17ab53ad31d"
+  },
+  "nodeGroups": [],
+  "id": "WcydwbRh48XGdtRv",
+  "tags": []
+}
