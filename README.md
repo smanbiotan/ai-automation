@@ -1,14 +1,15 @@
-# AI Automation
+# AI Automation Projects
 
-I build AI-powered automation workflows that help businesses save time, reduce repetitive work, and streamline daily operations.
+A collection of AI automation projects and workflows I created using n8n, Make.com, Zapier, APIs, webhooks, and AI agents.
 
-🤖 AI Automation
-⚡ n8n, Make.com & Zapier
-🔗 API & Webhook Integration
-🧠 AI Agents & LLM Integration
-📧 Email & CRM Automation
-📊 Data Processing & Workflow Design
-🔄 Business Process Automation
-🛠️ Custom Automation Solutions
+These projects focus on automating repetitive tasks, connecting different applications, and improving business processes.
 
-Need an automation for your business? Let’s build it.
+## Tools & Technologies
+
+- n8n
+- Make.com
+- Zapier
+- APIs & Webhooks
+- AI Agents & LLMs
+- Email & CRM Automation
+- Business Process Automation
