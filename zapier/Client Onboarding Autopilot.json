@@ -1,0 +1,104 @@
+{
+  "title": "Client Onboarding Autopilot",
+  "zap_id": "387095735",
+  "version": 1,
+  "zdl": {
+    "app": "EngineAPI",
+    "type": "run",
+    "action": "series_skip_errors",
+    "id": "series_387095735",
+    "title": "Client Onboarding Autopilot",
+    "zdl_version": "0.4",
+    "steps": [
+      {
+        "id": "387095735",
+        "app": "TableCLIAPI@1.27.0",
+        "type": "read",
+        "action": "new_record",
+        "params": { "table_id": "01M7PH1C5AGG6YV9ZZT4HHNM8K" },
+        "meta": {
+          "$editor": { "has_automatic_issues": false },
+          "params": { "table_id": { "label": "[Table] Client Onboarding" } }
+        },
+        "title": "New Record in Zapier Tables"
+      },
+      {
+        "id": "387095736",
+        "app": "AICLIAPI@4.0.37",
+        "type": "write",
+        "action": "get_completion",
+        "params": {
+          "api_branch_name": "",
+          "authentication_id": "0",
+          "instructions": "Write a warm, personal welcome email for a new client of BizFlow AI, an AI automation agency. Use exactly 4 sentences. Mention their business name ({{387095735__new__data__f3}}), the service they purchased ({{387095735__new__data__f4}}), one of their goals ({{387095735__new__data__f5}}), and confirm their kickoff date is {{387095735__new__data__f6}}. Address the client by their first name from {{387095735__new__data__f1}}. Return only the email body text.",
+          "provider_id": "",
+          "outputSchema": {},
+          "model_id": "standard/auto",
+          "isOutputArray": false,
+          "outputFields": []
+        },
+        "meta": {
+          "$editor": {
+            "has_automatic_issues": false,
+            "$prompt_strength": {
+              "fingerprint": 6649694587449761,
+              "result": { "status": "scored", "criteria": { "task": true, "data": true, "output": true, "rules": true }, "criteria_met": 4, "strength": "strong" }
+            }
+          },
+          "params": {}
+        },
+        "title": "Write welcome email with AI by Zapier"
+      },
+      {
+        "id": "387095750",
+        "app": "GoogleMailV2CLIAPI@2.14.0",
+        "type": "write",
+        "action": "message",
+        "params": {
+          "body_type": "plain",
+          "render_signature_in_html": false,
+          "signature_delimiter": true,
+          "send_to_groups": false,
+          "to": [ "{{387095735__new__data__f2}}" ],
+          "subject": "Welcome to BizFlow AI, {{387095735__new__data__f1}}!",
+          "body": "{{=gives[\"387095736\"][\"output\"]}}"
+        },
+        "meta": {
+          "$editor": { "added_step_correlation_id": "6669f1a2-a0db-4e14-aa19-c13e32979237", "has_automatic_issues": false },
+          "params": {}
+        },
+        "authentication_id": 67383356
+      },
+      {
+        "id": "387095758",
+        "app": "GoogleCalendarCLIAPI@1.16.0",
+        "type": "write",
+        "action": "event",
+        "params": {
+          "calendarid": "you@example.com",
+          "text": "Kickoff call with {{387095735__new__data__f1}} ({{387095735__new__data__f3}}) on {{387095735__new__data__f6}} at 10am"
+        },
+        "meta": {
+          "$editor": { "added_step_correlation_id": "3bd76894-e941-4054-949f-1a5913a5cabf", "has_automatic_issues": false },
+          "params": { "calendarid": { "label": "you@example.com" } }
+        },
+        "authentication_id": 67383359
+      },
+      {
+        "id": "387095761",
+        "app": "TableCLIAPI@1.27.0",
+        "type": "write",
+        "action": "update_record",
+        "params": {
+          "table_id": "01M7PH1C5AGG6YV9ZZT4HHNM8K",
+          "record_id": "{{387095735__record_id}}",
+          "new__data__f7": "Onboarded"
+        },
+        "meta": {
+          "$editor": { "added_step_correlation_id": "d3e757ad-00b4-42a6-9e12-1d5b62ba3238", "has_automatic_issues": false },
+          "params": { "table_id": { "label": "[Table] Client Onboarding" } }
+        }
+      }
+    ]
+  }
+}

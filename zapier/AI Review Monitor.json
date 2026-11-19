@@ -1,0 +1,172 @@
+{
+  "title": "AI Review Monitor",
+  "zap_id": "387096601",
+  "version": 1,
+  "zdl": {
+    "app": "EngineAPI",
+    "type": "run",
+    "action": "series_skip_errors",
+    "id": "series_387096601",
+    "title": "AI Review Monitor",
+    "zdl_version": "0.4",
+    "steps": [
+      {
+        "id": "387096601",
+        "app": "TableCLIAPI@1.27.0",
+        "type": "read",
+        "action": "new_record",
+        "params": { "table_id": "01M7PHQ3YQD3NSV426A4KHF9WP" },
+        "meta": {
+          "$editor": { "has_automatic_issues": false },
+          "params": { "table_id": { "label": "[Table] Customer Reviews" } }
+        },
+        "title": "New record in Customer Reviews table"
+      },
+      {
+        "id": "387096602",
+        "app": "AICLIAPI@4.0.37",
+        "type": "write",
+        "action": "get_completion",
+        "params": {
+          "api_branch_name": "",
+          "authentication_id": "0",
+          "model_id": "standard/auto",
+          "instructions": "You are writing on behalf of the business owner, responding to a customer review.\n\nReview details are provided in the input fields: customer name, rating (out of 5), and review text.\n\n1. sentiment: Classify the review as exactly one of these lowercase values: positive, neutral, or negative. Output nothing else.\n\n2. reply_draft: Write a short, warm public reply from the business owner, 2-3 sentences. If the sentiment is negative, apologise sincerely and offer to make it right (for example, invite the customer to get in touch so the team can fix the issue). Never argue with the customer, never dispute their experience, and do not make promises about specific refunds or compensation. Address the customer by first name if a name is given.\n\n3. testimonial_quote: Pick the single best sentence from the review text that would work as a testimonial quote, copied word for word. If no sentence is suitable (for example, the review is negative), return an empty string.",
+          "inputFields": {
+            "customer_name": "{{387096601__new__data__f1}}",
+            "rating": "{{387096601__new__data__f2}}",
+            "review_text": "{{387096601__new__data__f3}}"
+          },
+          "outputFields": [
+            { "name": "sentiment", "type": "text" },
+            { "name": "reply_draft", "type": "text" },
+            { "name": "testimonial_quote", "type": "text" }
+          ],
+          "isOutputArray": "false",
+          "includeWorkflowData": "true"
+        },
+        "meta": {
+          "$editor": { "has_automatic_issues": false },
+          "params": { "model_id": { "label": "Standard" } }
+        },
+        "title": "Classify sentiment, draft reply, and pick testimonial quote"
+      },
+      {
+        "id": "387096662",
+        "app": "TableCLIAPI@1.27.0",
+        "type": "write",
+        "action": "update_record",
+        "params": {
+          "table_id": "01M7PHQ3YQD3NSV426A4KHF9WP",
+          "record_id": "{{387096601__record_id}}",
+          "new__data__f5": "{{387096602__sentiment}}",
+          "new__data__f6": "{{387096602__reply_draft}}"
+        },
+        "meta": {
+          "$editor": { "added_step_correlation_id": "126453ac-037f-4ddb-859a-e348380b161c", "has_automatic_issues": false },
+          "params": { "table_id": { "label": "[Table] Customer Reviews" } }
+        },
+        "title": "Update Customer Reviews record with sentiment and reply draft"
+      },
+      {
+        "app": "EngineAPI",
+        "type": "run",
+        "action": "parallel_paths",
+        "params": {},
+        "id": "parallel_387096710",
+        "meta": { "$editor": { "has_automatic_issues": false } },
+        "steps": [
+          {
+            "app": "EngineAPI",
+            "type": "run",
+            "action": "series_skip_errors",
+            "id": "series_387096711",
+            "steps": [
+              {
+                "id": "387096711",
+                "app": "BranchingAPI",
+                "type": "filter",
+                "action": "filter",
+                "params": {
+                  "color": "Heroine Blue",
+                  "emoji": "A",
+                  "path_eval_index": 0,
+                  "filter_criteria": [
+                    { "key": "387096602__sentiment", "value": "negative", "action": "continue", "match": "iexact", "group": 1, "id": 1 },
+                    { "key": "387096601__new__data__f2", "value": "3", "action": "continue", "match": "iless", "group": 2, "id": 2 }
+                  ]
+                },
+                "meta": { "$editor": { "has_automatic_issues": false } },
+                "title": "Path A"
+              },
+              {
+                "id": "387096712",
+                "app": "GoogleMailV2CLIAPI@2.14.0",
+                "type": "write",
+                "action": "message",
+                "params": {
+                  "body_type": "plain",
+                  "render_signature_in_html": false,
+                  "signature_delimiter": true,
+                  "send_to_groups": false,
+                  "to": [ "you@example.com" ],
+                  "subject": "Negative review from {{387096601__new__data__f1}} ({{387096601__new__data__f2}} stars)",
+                  "body": "Negative review alert\n\nCustomer: {{387096601__new__data__f1}}\nRating: {{387096601__new__data__f2}} stars\nSource: {{387096601__new__data__f4}}\nSentiment: {{387096602__sentiment}}\n\nReview:\n{{387096601__new__data__f3}}\n\nSuggested reply:\n{{387096602__reply_draft}}"
+                },
+                "meta": {
+                  "$editor": { "has_automatic_issues": false },
+                  "params": { "body_type": { "label": "Plain" } }
+                },
+                "title": "Send negative review alert email",
+                "authentication_id": 67383356
+              }
+            ]
+          },
+          {
+            "app": "EngineAPI",
+            "type": "run",
+            "action": "series_skip_errors",
+            "id": "series_387096713",
+            "steps": [
+              {
+                "id": "387096713",
+                "app": "BranchingAPI",
+                "type": "filter",
+                "action": "filter",
+                "params": {
+                  "color": "Peru",
+                  "emoji": "B",
+                  "path_eval_index": 1,
+                  "filter_criteria": [
+                    { "key": "387096602__sentiment", "value": "positive", "action": "continue", "match": "iexact", "group": 1, "id": 1 },
+                    { "key": "387096601__new__data__f2", "value": "3", "action": "continue", "match": "igreater", "group": 1, "id": 2 }
+                  ]
+                },
+                "meta": { "$editor": { "has_automatic_issues": false } },
+                "title": "Path B"
+              },
+              {
+                "id": "387096714",
+                "app": "TableCLIAPI@1.27.0",
+                "type": "write",
+                "action": "create_record",
+                "params": {
+                  "table_id": "01M7PHS4RD43NG18QXKPHJEWTK",
+                  "new__data__f1": "{{387096601__new__data__f1}}",
+                  "new__data__f2": "{{387096602__testimonial_quote}}",
+                  "new__data__f3": "{{387096601__new__data__f2}}",
+                  "new__data__f4": "{{387096601__new__data__f4}}"
+                },
+                "meta": {
+                  "$editor": { "has_automatic_issues": false },
+                  "params": { "table_id": { "label": "[Table] Testimonials" } }
+                },
+                "title": "Create Testimonials record"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

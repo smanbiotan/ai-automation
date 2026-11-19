@@ -1,0 +1,156 @@
+{
+  "name": "E-commerce Order Ops (inventory + AI thank-you)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": { "hook": 4129372, "maxResults": 1 },
+      "mapper": {},
+      "metadata": { "designer": { "x": 0, "y": 0, "name": "New order (webhook from store)" } }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicFeeder",
+      "version": 1,
+      "parameters": {},
+      "mapper": { "array": "{{1.items}}" },
+      "metadata": { "designer": { "x": 300, "y": 0, "name": "Each line item" } }
+    },
+    {
+      "id": 3,
+      "module": "datastore:GetRecord",
+      "version": 1,
+      "parameters": { "datastore": 263455 },
+      "mapper": { "key": "inv-{{2.sku}}", "returnWrapped": false },
+      "metadata": { "designer": { "x": 600, "y": 0, "name": "Look up product stock" } }
+    },
+    {
+      "id": 4,
+      "module": "datastore:UpdateRecord",
+      "version": 1,
+      "parameters": { "datastore": 263455 },
+      "mapper": {
+        "key": "inv-{{2.sku}}",
+        "data": { "stock": "{{3.stock - 2.qty}}" },
+        "upsert": false,
+        "overwriteArrays": false
+      },
+      "metadata": { "designer": { "x": 900, "y": 0, "name": "Deduct stock" } }
+    },
+    {
+      "id": 5,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": { "designer": { "x": 1200, "y": 0 } },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 6,
+              "module": "google-email:sendAnEmail",
+              "version": 4,
+              "parameters": { "__IMTCONN__": 13160117 },
+              "filter": {
+                "name": "Stock at or below reorder level",
+                "conditions": [ [ { "a": "{{3.stock - 2.qty}}", "b": "{{3.reorder_level}}", "o": "number:lessorequal" } ] ]
+              },
+              "mapper": {
+                "to": [ "you@example.com" ],
+                "subject": "📦 Low stock: {{3.name}} ({{3.stock - 2.qty}} left)",
+                "bodyType": "rawHtml",
+                "content": "<h2>Time to reorder</h2><p><b>{{3.name}}</b> (SKU {{2.sku}}) dropped to <b>{{3.stock - 2.qty}}</b> units after order {{1.order_id}}. Reorder level is {{3.reorder_level}}.</p><p style=\"color:#888;font-size:12px\">BizFlow AI order ops (Make).</p>"
+              },
+              "metadata": { "designer": { "x": 1500, "y": -200, "name": "Low-stock alert" } }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 7,
+              "module": "util:TextAggregator",
+              "version": 1,
+              "parameters": { "feeder": 2, "rowSeparator": "\n" },
+              "mapper": { "value": "{{2.qty}} x {{3.name}} - PHP {{3.price * 2.qty}}" },
+              "metadata": { "designer": { "x": 1500, "y": 150, "name": "Combine order lines" } }
+            },
+            {
+              "id": 8,
+              "module": "ai-tools:Ask",
+              "version": 2,
+              "parameters": { "model": "medium", "makeConnectionId": 13159994 },
+              "mapper": {
+                "input": "Write a warm, short thank-you email body in simple HTML (only <p>, <ul>, <li>, <b> tags, no <html> or <body>, no markdown, no code fences) for an online gift shop called 'Little Bloom Goods'.\n\nCustomer first name: {{first(split(1.customer_name; \" \"))}}\nOrder ID: {{1.order_id}}\nItems ordered:\n{{7.text}}\nOrder total: PHP {{1.total}}\n\nInclude: a thank-you line, a bullet list of their items, a note that the order ships within 2 business days, and ONE personalised upsell suggestion chosen from this catalog that complements what they bought (do not suggest something they already ordered): Ceramic Coffee Mug (PHP 350), Canvas Tote Bag (PHP 450), Soy Wax Candle (PHP 520), Linen Notebook (PHP 280). Offer code THANKYOU10 for 10% off their next order. Sign off as 'The Little Bloom Goods Team'. Under 150 words."
+              },
+              "metadata": { "designer": { "x": 1800, "y": 150, "name": "AI: thank-you + upsell" } }
+            },
+            {
+              "id": 9,
+              "module": "google-email:sendAnEmail",
+              "version": 4,
+              "parameters": { "__IMTCONN__": 13160117 },
+              "mapper": {
+                "to": [ "{{1.email}}" ],
+                "subject": "Thank you for your order {{1.order_id}} 🌸",
+                "bodyType": "rawHtml",
+                "content": "{{replace(replace(8.answer; \"```html\"; emptystring); \"```\"; emptystring)}}"
+              },
+              "metadata": { "designer": { "x": 2100, "y": 150, "name": "Email customer" } }
+            },
+            {
+              "id": 10,
+              "module": "datastore:AddRecord",
+              "version": 1,
+              "parameters": { "datastore": 263455 },
+              "mapper": {
+                "key": "order-{{1.order_id}}",
+                "overwrite": true,
+                "data": {
+                  "record_type": "order",
+                  "created_at": "{{now}}",
+                  "status": "thanked",
+                  "order_id": "{{1.order_id}}",
+                  "name": "{{1.customer_name}}",
+                  "email": "{{1.email}}",
+                  "items_summary": "{{7.text}}",
+                  "total": "{{1.total}}"
+                }
+              },
+              "metadata": { "designer": { "x": 2400, "y": 150, "name": "Log order" } }
+            },
+            {
+              "id": 11,
+              "module": "gateway:WebhookRespond",
+              "version": 1,
+              "parameters": {},
+              "mapper": {
+                "status": 200,
+                "body": "Order {{1.order_id}} processed: stock updated, thank-you email sent.",
+                "headers": [ { "key": "Content-Type", "value": "text/plain; charset=utf-8" } ]
+              },
+              "metadata": { "designer": { "x": 2700, "y": 150, "name": "Reply to store" } }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "designer": { "orphans": [] },
+    "scenario": {
+      "dlq": false,
+      "slots": null,
+      "dataloss": false,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "roundtrips": 1,
+      "sequential": false,
+      "confidential": false,
+      "autoCommitTriggerLast": true
+    }
+  }
+}

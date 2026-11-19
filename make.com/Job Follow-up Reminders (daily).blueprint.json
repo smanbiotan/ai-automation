@@ -1,0 +1,63 @@
+{
+  "name": "Job Follow-up Reminders (daily)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "datastore:SearchRecord",
+      "version": 1,
+      "parameters": { "limit": 20, "datastore": 263455, "continueWhenNoRes": false },
+      "mapper": {
+        "filter": [
+          [
+            { "a": "record_type", "b": "job", "o": "text:equal" },
+            { "a": "status", "b": "applied", "o": "text:equal" },
+            { "a": "reminded", "b": null, "o": "boolean:isfalse" },
+            { "a": "follow_up_date", "b": "{{now}}", "o": "date:lessorequal" }
+          ]
+        ],
+        "sort": [ { "key": "follow_up_date", "order": 1 } ]
+      },
+      "metadata": { "designer": { "x": 0, "y": 0, "name": "Find applications due for follow-up" } }
+    },
+    {
+      "id": 2,
+      "module": "google-email:sendAnEmail",
+      "version": 4,
+      "parameters": { "__IMTCONN__": 13160117 },
+      "mapper": {
+        "to": [ "you@example.com" ],
+        "subject": "⏰ Follow up today: {{1.data.role}} at {{1.data.company}}",
+        "bodyType": "rawHtml",
+        "content": "<p>It has been a week since you applied for <b>{{1.data.role}}</b> at <b>{{1.data.company}}</b> (fit score {{1.data.fit_score}}/10).</p><p>A short, polite follow-up can double your reply rate. Suggested message:</p><blockquote style=\"border-left:3px solid #ccc;padding-left:10px\">Hi, I applied for the {{1.data.role}} role last week and wanted to share that I'm still very interested. {{1.data.pitch}} I'd love the chance to talk. Thank you!</blockquote><p><a href=\"{{1.data.url}}\">Open the job post</a></p>"
+      },
+      "metadata": { "designer": { "x": 300, "y": 0, "name": "Send follow-up reminder" } }
+    },
+    {
+      "id": 3,
+      "module": "datastore:UpdateRecord",
+      "version": 1,
+      "parameters": { "datastore": 263455 },
+      "mapper": {
+        "key": "{{1.key}}",
+        "data": { "reminded": true },
+        "upsert": false,
+        "overwriteArrays": false
+      },
+      "metadata": { "designer": { "x": 600, "y": 0, "name": "Mark as reminded" } }
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "dlq": false,
+      "dataloss": false,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "roundtrips": 1,
+      "sequential": false,
+      "confidential": false,
+      "autoCommitTriggerLast": true
+    }
+  }
+}
