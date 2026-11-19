@@ -1,0 +1,179 @@
+{
+  "name": "Daily AI News Brief",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📰 Daily AI News Brief\n**Portfolio project by BizFlow AI**\n\nEvery morning at 7:00 AM:\n1. Reads 5 AI / automation RSS feeds\n2. Keeps stories from the last 24 hours (a broken feed is skipped, not fatal)\n3. Gemini writes a newsletter: top 5 stories, quick hits, and an automation idea of the day\n4. Sends it as an HTML email\n\nEdit **News Sources** to change topics (e.g. real estate, crypto, your niche) and **Email Daily Brief** to change recipients.",
+        "height": 528,
+        "width": 1508,
+        "color": 4
+      },
+      "id": "3eed47cc-b17a-48a2-9f33-95b899fa2c60",
+      "name": "Sticky Note 31181fdb",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-256, -240]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [ { "triggerAtHour": 7 } ] }
+      },
+      "id": "bd3e7d0b-1ac9-458f-81a4-b67ac5f05157",
+      "name": "Every Day 7:00 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"feeds\": [ { \"source\": \"TechCrunch AI\", \"url\": \"https://techcrunch.com/category/artificial-intelligence/feed/\" }, { \"source\": \"The Verge AI\", \"url\": \"https://www.theverge.com/rss/ai-artificial-intelligence/index.xml\" }, { \"source\": \"VentureBeat AI\", \"url\": \"https://venturebeat.com/category/ai/feed/\" }, { \"source\": \"MIT Technology Review\", \"url\": \"https://www.technologyreview.com/feed/\" }, { \"source\": \"n8n Blog\", \"url\": \"https://blog.n8n.io/rss/\" } ] }",
+        "options": {}
+      },
+      "id": "35f30467-7ba3-4a5e-a8fd-e9a2b5fd40da",
+      "name": "News Sources",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [272, 128]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "feeds",
+        "options": {}
+      },
+      "id": "5d278628-2e71-4f9d-9392-ad6e0a5b5bfe",
+      "name": "One Item per Feed",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [496, 128]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "f10e6a54-65bb-481c-8740-edcc66695790",
+      "name": "Read RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [720, 128],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.title && !!$json.isoDate && DateTime.fromISO($json.isoDate) >= $now.minus({ hours: 24 }) }}",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d07a9fbf-4235-4b4a-99bc-84d0e031d3f7",
+      "name": "Keep Last 24 Hours",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [944, 128]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": { "sortField": [ { "fieldName": "isoDate", "order": "descending" } ] },
+        "options": {}
+      },
+      "id": "9be0c09a-ad2d-4ee9-8f52-939bda358732",
+      "name": "Newest First",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [1168, 128]
+    },
+    {
+      "parameters": {
+        "maxItems": 25
+      },
+      "id": "022d751f-1c08-4cff-baa0-4ca1547a5d45",
+      "name": "Top 25 Stories",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [1392, 128]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "articles",
+        "include": "specifiedFields",
+        "fieldsToInclude": "title, link, contentSnippet, isoDate",
+        "options": {}
+      },
+      "id": "241ba27c-b6fa-42e3-8473-691e7f9854f6",
+      "name": "Combine Stories",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [800, 128]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Today is {{ $now.setZone(\"Asia/Manila\").toFormat(\"cccc, MMMM d, yyyy\") }}. Here are the AI and automation news stories from the last 24 hours as JSON:\n\n{{ JSON.stringify($json.articles.map(a => ({ title: a.title, link: a.link, snippet: (a.contentSnippet || \"\").slice(0, 350), date: a.isoDate }))) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are the editor of a short morning newsletter called \"AI & Automation Brief\" for small-business owners and automation freelancers.\n\nWrite the email body as clean HTML (no <html>, <head> or <body> tags, no markdown, no code fences). Use inline styles sparingly.\n\nStructure:\n1. <h2> greeting line with the date.\n2. \"Top 5 stories\": for each, an <h3> linked headline (use the given link) and 1-2 sentences on what happened and why it matters for businesses.\n3. \"Quick hits\": a <ul> of up to 6 other stories, one line each, linked.\n4. \"Automation idea of the day\": one practical idea a reader could build this week in n8n, Make or Zapier, inspired by today's news.\n\nRules: only use facts from the given stories, never invent details. Merge duplicate stories. Plain, friendly English. If there are no stories, write a short note saying it was a quiet news day."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "c7a057b8-c506-4644-8e90-2f8805bb3091",
+      "name": "AI Write Digest",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [1024, 128]
+    },
+    {
+      "parameters": {
+        "options": { "maxOutputTokens": 4096, "temperature": 0.4 }
+      },
+      "id": "5491a26d-7d34-459b-ac9f-e2471fc870cc",
+      "name": "Gemini (Editor)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [1104, 352]
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=☕ AI & Automation Brief - {{ $now.setZone(\"Asia/Manila\").toFormat(\"MMM d, yyyy\") }}",
+        "message": "={{ $json.text.replace(/^\\s*```(html)?\\s*/i, \"\").replace(/```\\s*$/, \"\") }}<hr><p style=\"color:#888;font-size:12px\">Curated automatically by the BizFlow AI news agent (n8n + Gemini).</p>",
+        "options": { "appendAttribution": false, "senderName": "BizFlow AI Brief" }
+      },
+      "id": "0c5e354b-efbe-4843-92f0-434f5cb96cfd",
+      "name": "Email Daily Brief",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1376, 128],
+      "webhookId": "e7b1c427-69f3-46a0-928f-d318956b5c86",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    }
+  ],
+  "connections": {
+    "Every Day 7:00 AM": { "main": [ [ { "node": "News Sources", "type": "main", "index": 0 } ] ] },
+    "News Sources": { "main": [ [ { "node": "One Item per Feed", "type": "main", "index": 0 } ] ] },
+    "One Item per Feed": { "main": [ [ { "node": "Read RSS Feed", "type": "main", "index": 0 } ] ] },
+    "Read RSS Feed": { "main": [ [ { "node": "Keep Last 24 Hours", "type": "main", "index": 0 } ] ] },
+    "Keep Last 24 Hours": { "main": [ [ { "node": "Newest First", "type": "main", "index": 0 } ] ] },
+    "Newest First": { "main": [ [ { "node": "Top 25 Stories", "type": "main", "index": 0 } ] ] },
+    "Top 25 Stories": { "main": [ [ { "node": "Combine Stories", "type": "main", "index": 0 } ] ] },
+    "Combine Stories": { "main": [ [ { "node": "AI Write Digest", "type": "main", "index": 0 } ] ] },
+    "AI Write Digest": { "main": [ [ { "node": "Email Daily Brief", "type": "main", "index": 0 } ] ] },
+    "Gemini (Editor)": { "ai_languageModel": [ [ { "node": "AI Write Digest", "type": "ai_languageModel", "index": 0 } ] ] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Manila" },
+  "tags": [],
+  "meta": { "templateCredsSetupCompleted": false }
+}

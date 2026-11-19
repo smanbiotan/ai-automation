@@ -1,0 +1,116 @@
+{
+  "name": "AI Job Application Tracker",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": { "hook": 4129371, "maxResults": 1 },
+      "mapper": {},
+      "metadata": { "designer": { "x": 0, "y": 0, "name": "New job to track (webhook)" } }
+    },
+    {
+      "id": 2,
+      "module": "ai-tools:Extract",
+      "version": 2,
+      "parameters": { "model": "medium", "makeConnectionId": 13159994 },
+      "mapper": {
+        "input": "Job title: {{1.job_title}}\nCompany: {{1.company}}\nURL: {{1.url}}\n\nJob description:\n{{1.job_description}}",
+        "fields": [
+          { "name": "company", "type": "string", "description": "Hiring company name" },
+          { "name": "role", "type": "string", "description": "Job title" },
+          { "name": "seniority", "type": "string", "description": "One of: Intern, Junior, Mid, Senior, Lead" },
+          { "name": "location", "type": "string", "description": "Location, or 'Remote' / 'Hybrid - City'" },
+          { "name": "salary", "type": "string", "description": "Salary or rate range as written, or 'Not stated'" },
+          { "name": "must_have_skills", "type": "string", "description": "Comma-separated list of the required skills and tools" }
+        ]
+      },
+      "metadata": { "designer": { "x": 300, "y": 0, "name": "AI: parse job post" } }
+    },
+    {
+      "id": 3,
+      "module": "ai-tools:Extract",
+      "version": 2,
+      "parameters": { "model": "medium", "makeConnectionId": 13159994 },
+      "mapper": {
+        "input": "CANDIDATE PROFILE:\n{{ifempty(1.my_profile; \"AI automation specialist based in the Philippines with 2 years of experience building n8n, Make and Zapier workflows, AI chatbots with Gemini and OpenAI, REST API and webhook integrations, Supabase databases, and lead-generation systems for small businesses. Strong written English, open to remote roles.\")}}\n\nJOB: {{2.information.role}} at {{2.information.company}} ({{2.information.seniority}}, {{2.information.location}})\nREQUIRED SKILLS: {{2.information.must_have_skills}}\n\nFULL JOB DESCRIPTION:\n{{1.job_description}}",
+        "fields": [
+          { "name": "fit_score", "type": "number", "description": "How well the candidate fits this job, a whole number from 1 (poor) to 10 (excellent), based only on skills and experience" },
+          { "name": "pitch", "type": "string", "description": "A tailored 3-4 sentence resume summary for this exact job, first person, using the job's own keywords, without inventing experience the candidate does not have" },
+          { "name": "cover_opener", "type": "string", "description": "A strong 2-sentence opening paragraph for a cover letter to this company" },
+          { "name": "gaps", "type": "string", "description": "Required skills the candidate seems to lack, comma-separated, or 'None'" }
+        ]
+      },
+      "metadata": { "designer": { "x": 600, "y": 0, "name": "AI: score fit + tailor pitch" } }
+    },
+    {
+      "id": 4,
+      "module": "datastore:AddRecord",
+      "version": 1,
+      "parameters": { "datastore": 263455 },
+      "mapper": {
+        "key": "",
+        "overwrite": false,
+        "data": {
+          "record_type": "job",
+          "created_at": "{{now}}",
+          "status": "applied",
+          "company": "{{2.information.company}}",
+          "role": "{{2.information.role}}",
+          "url": "{{1.url}}",
+          "seniority": "{{2.information.seniority}}",
+          "location": "{{2.information.location}}",
+          "salary": "{{2.information.salary}}",
+          "must_have_skills": "{{2.information.must_have_skills}}",
+          "fit_score": "{{3.information.fit_score}}",
+          "pitch": "{{3.information.pitch}}",
+          "summary": "Gaps: {{3.information.gaps}}",
+          "follow_up_date": "{{addDays(now; 7)}}",
+          "reminded": false
+        }
+      },
+      "metadata": { "designer": { "x": 900, "y": 0, "name": "Save application (follow up in 7 days)" } }
+    },
+    {
+      "id": 5,
+      "module": "google-email:sendAnEmail",
+      "version": 4,
+      "parameters": { "__IMTCONN__": 13160117 },
+      "mapper": {
+        "to": [ "you@example.com" ],
+        "subject": "💼 Application kit: {{2.information.role}} at {{2.information.company}} (fit {{3.information.fit_score}}/10)",
+        "bodyType": "rawHtml",
+        "content": "<h2>{{2.information.role}} at {{2.information.company}}</h2><p><b>Fit score:</b> {{3.information.fit_score}}/10 &middot; <b>Seniority:</b> {{2.information.seniority}} &middot; <b>Location:</b> {{2.information.location}} &middot; <b>Salary:</b> {{2.information.salary}}</p><p><b>Required skills:</b> {{2.information.must_have_skills}}<br><b>Your gaps:</b> {{3.information.gaps}}</p><h3>Tailored resume summary</h3><p>{{3.information.pitch}}</p><h3>Cover letter opener</h3><p>{{3.information.cover_opener}}</p><p><a href=\"{{1.url}}\">Open the job post</a></p><p style=\"color:#888;font-size:12px\">Saved to your tracker. You'll get a follow-up reminder on {{formatDate(addDays(now; 7); \"MMM D, YYYY\")}}.</p>"
+      },
+      "metadata": { "designer": { "x": 1200, "y": 0, "name": "Email me the application kit" } }
+    },
+    {
+      "id": 6,
+      "module": "gateway:WebhookRespond",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "status": 200,
+        "body": "Saved {{2.information.role}} at {{2.information.company}}. Fit score {{3.information.fit_score}}/10. Application kit sent to your inbox.",
+        "headers": [ { "key": "Content-Type", "value": "text/plain; charset=utf-8" } ]
+      },
+      "metadata": { "designer": { "x": 1500, "y": 0, "name": "Reply to caller" } }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "designer": { "orphans": [] },
+    "scenario": {
+      "dlq": false,
+      "slots": null,
+      "dataloss": false,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "roundtrips": 1,
+      "sequential": false,
+      "confidential": false,
+      "autoCommitTriggerLast": true
+    }
+  }
+}

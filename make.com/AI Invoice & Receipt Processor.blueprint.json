@@ -1,0 +1,145 @@
+{
+  "name": "AI Invoice & Receipt Processor",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomMailHook",
+      "version": 1,
+      "parameters": { "hook": 4129370, "maxResults": 1 },
+      "mapper": {},
+      "metadata": { "designer": { "x": 0, "y": 0, "name": "Invoice inbox (forward emails here)" } }
+    },
+    {
+      "id": 2,
+      "module": "ai-tools:Extract",
+      "version": 2,
+      "parameters": { "model": "medium", "makeConnectionId": 13159994 },
+      "mapper": {
+        "input": "Subject: {{1.subject}}\nFrom: {{1.from.name}} <{{1.from.address}}>\nAttachments: {{join(map(1.attachments; \"fileName\"); \", \")}}\n\n{{ifempty(1.text; 1.html)}}",
+        "fields": [
+          { "name": "is_invoice", "type": "boolean", "description": "true if this email is an invoice, bill, receipt, order confirmation with a charged amount, or payment confirmation. false for newsletters, marketing and personal emails." },
+          { "name": "vendor", "type": "string", "description": "Name of the company or person that issued the invoice or receipt" },
+          { "name": "invoice_number", "type": "string", "description": "Invoice, receipt or order number. Empty if none." },
+          { "name": "invoice_date", "type": "string", "description": "Invoice or transaction date in YYYY-MM-DD format" },
+          { "name": "currency", "type": "string", "description": "3-letter ISO currency code, e.g. PHP, USD, EUR. Use PHP for peso amounts." },
+          { "name": "subtotal", "type": "number", "description": "Amount before tax as a plain number. 0 if not shown." },
+          { "name": "tax", "type": "number", "description": "Tax or VAT amount as a plain number. 0 if not shown." },
+          { "name": "total", "type": "number", "description": "Final total amount charged as a plain number" },
+          { "name": "category", "type": "string", "description": "Expense category, exactly one of: Software, Utilities, Travel, Food, Office Supplies, Marketing, Professional Services, Other" },
+          { "name": "summary", "type": "string", "description": "One short sentence describing what was purchased" }
+        ]
+      },
+      "metadata": { "designer": { "x": 300, "y": 0, "name": "AI: extract invoice fields" } }
+    },
+    {
+      "id": 3,
+      "module": "util:SetVariables",
+      "version": 1,
+      "parameters": {},
+      "filter": {
+        "name": "Only invoices and receipts",
+        "conditions": [ [ { "a": "{{2.information.is_invoice}}", "b": "true", "o": "boolean:equal" } ] ]
+      },
+      "mapper": {
+        "variables": [
+          { "name": "difference", "value": "{{round((ifempty(2.information.subtotal; 0) + ifempty(2.information.tax; 0) - ifempty(2.information.total; 0)) * 100) / 100}}" },
+          { "name": "status", "value": "{{if(ifempty(2.information.total; 0) <= 0; \"needs_review\"; if(ifempty(2.information.subtotal; 0) = 0; \"verified\"; if(round((ifempty(2.information.subtotal; 0) + ifempty(2.information.tax; 0) - ifempty(2.information.total; 0)) * 100) > 5; \"needs_review\"; if(round((ifempty(2.information.subtotal; 0) + ifempty(2.information.tax; 0) - ifempty(2.information.total; 0)) * 100) < -5; \"needs_review\"; \"verified\"))))}}" }
+        ]
+      },
+      "metadata": { "designer": { "x": 600, "y": 0, "name": "Validate totals (subtotal + tax = total)" } }
+    },
+    {
+      "id": 4,
+      "module": "datastore:AddRecord",
+      "version": 1,
+      "parameters": { "datastore": 263455 },
+      "mapper": {
+        "key": "",
+        "overwrite": false,
+        "data": {
+          "record_type": "invoice",
+          "created_at": "{{now}}",
+          "status": "{{3.status}}",
+          "summary": "{{2.information.summary}}",
+          "sender": "{{1.from.address}}",
+          "vendor": "{{2.information.vendor}}",
+          "invoice_number": "{{2.information.invoice_number}}",
+          "invoice_date": "{{2.information.invoice_date}}",
+          "currency": "{{2.information.currency}}",
+          "subtotal": "{{2.information.subtotal}}",
+          "tax": "{{2.information.tax}}",
+          "total": "{{2.information.total}}",
+          "category": "{{2.information.category}}"
+        }
+      },
+      "metadata": { "designer": { "x": 900, "y": 0, "name": "Save to Portfolio - Records" } }
+    },
+    {
+      "id": 5,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": { "designer": { "x": 1200, "y": 0 } },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 6,
+              "module": "google-email:sendAnEmail",
+              "version": 4,
+              "parameters": { "__IMTCONN__": 13160117 },
+              "filter": {
+                "name": "Totals do not match",
+                "conditions": [ [ { "a": "{{3.status}}", "b": "needs_review", "o": "text:equal" } ] ]
+              },
+              "mapper": {
+                "to": [ "you@example.com" ],
+                "subject": "⚠️ Invoice needs review: {{2.information.vendor}} {{2.information.currency}} {{2.information.total}}",
+                "bodyType": "rawHtml",
+                "content": "<h2>Invoice needs a human check</h2><p>The amounts on this invoice don't add up (or no total was found), so it was saved with status <b>needs_review</b>.</p><table cellpadding=\"6\" style=\"border-collapse:collapse\"><tr><td><b>Vendor</b></td><td>{{2.information.vendor}}</td></tr><tr><td><b>Invoice #</b></td><td>{{2.information.invoice_number}}</td></tr><tr><td><b>Date</b></td><td>{{2.information.invoice_date}}</td></tr><tr><td><b>Subtotal</b></td><td>{{2.information.currency}} {{2.information.subtotal}}</td></tr><tr><td><b>Tax</b></td><td>{{2.information.currency}} {{2.information.tax}}</td></tr><tr><td><b>Total</b></td><td>{{2.information.currency}} {{2.information.total}}</td></tr><tr><td><b>Difference</b></td><td>{{3.difference}}</td></tr><tr><td><b>Category</b></td><td>{{2.information.category}}</td></tr></table><p><b>Original email:</b> \"{{1.subject}}\" from {{1.from.address}}</p><p style=\"color:#888;font-size:12px\">Processed by the BizFlow AI invoice processor (Make + AI).</p>"
+              },
+              "metadata": { "designer": { "x": 1500, "y": -150, "name": "Alert: needs review" } }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 7,
+              "module": "google-email:sendAnEmail",
+              "version": 4,
+              "parameters": { "__IMTCONN__": 13160117 },
+              "filter": {
+                "name": "Verified",
+                "conditions": [ [ { "a": "{{3.status}}", "b": "verified", "o": "text:equal" } ] ]
+              },
+              "mapper": {
+                "to": [ "you@example.com" ],
+                "subject": "✅ Logged: {{2.information.vendor}} {{2.information.currency}} {{2.information.total}} ({{2.information.category}})",
+                "bodyType": "rawHtml",
+                "content": "<p>A new {{lower(2.information.category)}} expense was logged automatically.</p><ul><li><b>Vendor:</b> {{2.information.vendor}}</li><li><b>Invoice #:</b> {{2.information.invoice_number}}</li><li><b>Date:</b> {{2.information.invoice_date}}</li><li><b>Total:</b> {{2.information.currency}} {{2.information.total}}</li><li><b>What:</b> {{2.information.summary}}</li></ul><p style=\"color:#888;font-size:12px\">Processed by the BizFlow AI invoice processor (Make + AI).</p>"
+              },
+              "metadata": { "designer": { "x": 1500, "y": 150, "name": "Confirm: logged" } }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "designer": { "orphans": [] },
+    "scenario": {
+      "dlq": false,
+      "slots": null,
+      "dataloss": false,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "roundtrips": 1,
+      "sequential": false,
+      "confidential": false,
+      "autoCommitTriggerLast": true
+    }
+  }
+}

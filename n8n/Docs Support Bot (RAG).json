@@ -1,0 +1,174 @@
+{
+  "name": "Docs Support Bot (RAG)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 💬 Docs Support Bot (RAG)\n**Portfolio project by BizFlow AI**\n\n**Step 1 - Ingest:** open the **Upload Knowledge Base** form and upload FAQ / policy files (PDF, DOCX, TXT, MD, CSV). They are split, embedded with Gemini and stored in a vector store.\n\n**Step 2 - Chat:** open the **Support Chat** public URL. The agent searches the documents, answers with a source line, and hands off to a human by email when it cannot answer.\n\n⚠️ The Simple Vector Store lives in memory, so re-upload the documents after an n8n restart. For production swap it for Supabase / Pinecone.",
+        "height": 728,
+        "width": 2008,
+        "color": 4
+      },
+      "id": "d2aff4ec-cb77-4175-8cb5-df0cb51c0dec",
+      "name": "Sticky Note fb05d0a3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-720, -208]
+    },
+    {
+      "parameters": {
+        "formTitle": "Upload company documents",
+        "formDescription": "Upload FAQs, policies, price lists or product docs. The support bot will answer questions from these files.",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "Documents", "fieldType": "file", "fieldName": "documents", "acceptFileTypes": ".pdf,.txt,.md,.docx,.csv", "requiredField": true }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Add to knowledge base",
+          "path": "bizflow-kb-upload",
+          "respondWithOptions": { "values": { "formSubmittedText": "Documents received. They will be searchable by the support bot in a few seconds." } }
+        }
+      },
+      "id": "054f1b06-16cf-44c1-b272-d2d5989278ed",
+      "name": "Upload Knowledge Base",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [0, 0],
+      "webhookId": "70217393-664c-43de-a579-9992888a89b3"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": { "__rl": true, "mode": "id", "value": "bizflow_support_kb" }
+      },
+      "id": "cfeae2a0-040b-4d41-9c48-63a7a7d6aedb",
+      "name": "Store in Knowledge Base",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.4,
+      "position": [272, 128]
+    },
+    {
+      "parameters": {},
+      "id": "0f444740-6d89-4c9d-98ef-8a2244cfec6d",
+      "name": "Gemini Embeddings (Ingest)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [288, 352]
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "id": "40667de0-4cb8-464f-bd1c-d0b65ecb61bb",
+      "name": "Load Uploaded Files",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [416, 352]
+    },
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi! 👋 I am the BizFlow AI support assistant.\nAsk me anything about our services, pricing or policies.",
+        "options": {
+          "inputPlaceholder": "Type your question...",
+          "subtitle": "Answers come straight from our company documents.",
+          "title": "BizFlow AI Support",
+          "responseMode": "streaming"
+        }
+      },
+      "id": "c04b504c-ce84-460b-b51d-2500b20d0488",
+      "name": "Support Chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [0, 224],
+      "webhookId": "a7fa1b81-8a4d-4c46-965e-05fd850f5479"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are the customer support assistant for BizFlow AI.\n\nTOOLS\n- search_knowledge_base: search the company documents. Call it for EVERY question about the company, its services, pricing, policies or processes.\n- escalate_to_human: email the support team. Only use it after the customer gives their name and email and agrees to be contacted.\n\nRULES\n- Answer ONLY from what search_knowledge_base returns. Never invent prices, policies, dates or promises.\n- After each answer, add a short source line, e.g. \"Source: refund-policy.pdf\", using the document metadata when available.\n- If the knowledge base has no answer, say so honestly, then offer to pass the question to a human. Ask for their name and email before calling escalate_to_human.\n- If the customer is angry, asks for a refund exception, or asks for a human, offer escalate_to_human.\n- Keep answers short: 1-4 sentences or a short list. Friendly and professional.\n- Reply in the same language the customer uses.\n- Politely decline topics unrelated to BizFlow AI.",
+          "maxIterations": 6
+        }
+      },
+      "id": "5e1654bd-8b18-4ae2-bf2e-d235c46620e1",
+      "name": "Support Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [432, 352]
+    },
+    {
+      "parameters": {
+        "options": { "maxOutputTokens": 1024, "temperature": 0.2 }
+      },
+      "id": "68d1f2a4-27ec-42ec-8669-c55bcb12af7f",
+      "name": "Gemini (Support)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [272, 576]
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "5552abde-133a-4d1c-9a34-512652a5a211",
+      "name": "Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [400, 576]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search the company knowledge base (FAQs, policies, pricing, product docs). Always call this before answering any question about the company.",
+        "memoryKey": { "__rl": true, "mode": "id", "value": "bizflow_support_kb" },
+        "topK": 5
+      },
+      "id": "8d757593-8d14-437b-8665-2147493fb472",
+      "name": "search_knowledge_base",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.4,
+      "position": [528, 576]
+    },
+    {
+      "parameters": {},
+      "id": "72a69ceb-14f9-40da-bb2e-a912ac78c94c",
+      "name": "Gemini Embeddings (Search)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [608, 784]
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('subject', 'Short subject line for the support handoff, e.g. \"Support handoff: refund request from Ana\"') }}",
+        "emailType": "text",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message', 'Customer name, customer email, what they asked, and what the bot could not answer') }}",
+        "options": { "appendAttribution": false }
+      },
+      "id": "9ac605ba-39ac-4540-bead-2e3c9d87e7e4",
+      "name": "escalate_to_human",
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [816, 576],
+      "webhookId": "c6d8db3c-bd97-4814-8e55-945e668539cc",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    }
+  ],
+  "connections": {
+    "Upload Knowledge Base": { "main": [ [ { "node": "Store in Knowledge Base", "type": "main", "index": 0 } ] ] },
+    "Gemini Embeddings (Ingest)": { "ai_embedding": [ [ { "node": "Store in Knowledge Base", "type": "ai_embedding", "index": 0 } ] ] },
+    "Load Uploaded Files": { "ai_document": [ [ { "node": "Store in Knowledge Base", "type": "ai_document", "index": 0 } ] ] },
+    "Support Chat": { "main": [ [ { "node": "Support Agent", "type": "main", "index": 0 } ] ] },
+    "Gemini (Support)": { "ai_languageModel": [ [ { "node": "Support Agent", "type": "ai_languageModel", "index": 0 } ] ] },
+    "Conversation Memory": { "ai_memory": [ [ { "node": "Support Agent", "type": "ai_memory", "index": 0 } ] ] },
+    "search_knowledge_base": { "ai_tool": [ [ { "node": "Support Agent", "type": "ai_tool", "index": 0 } ] ] },
+    "Gemini Embeddings (Search)": { "ai_embedding": [ [ { "node": "search_knowledge_base", "type": "ai_embedding", "index": 0 } ] ] },
+    "escalate_to_human": { "ai_tool": [ [ { "node": "Support Agent", "type": "ai_tool", "index": 0 } ] ] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "tags": [],
+  "meta": { "templateCredsSetupCompleted": false }
+}

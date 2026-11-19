@@ -1,0 +1,345 @@
+{
+  "name": "AI Lead Qualification Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🎯 AI Lead Qualification Agent\n**Portfolio project by BizFlow AI**\n\n1. A prospect fills in the lead form\n2. Gemini scores the lead 1-10 against a budget/timeline/clarity rubric\n3. Every lead is logged to the **Portfolio - Leads** data table\n4. Routing:\n   - 🔥 **Hot** → owner gets an alert + AI-drafted reply to approve\n   - 🙂 **Warm** → lead gets a personalised AI reply\n   - ❄️ **Cold** → lead gets a nurture email\n   - ⚠️ **Low confidence / AI error** → manual review\n\nOpen the form via the **Lead Intake Form** node → Test URL / Production URL.",
+        "height": 572,
+        "width": 2052,
+        "color": 4
+      },
+      "id": "bc653bf4-ff64-4223-b96b-03bf3c70f437",
+      "name": "Sticky Note be56f613",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-544, -64]
+    },
+    {
+      "parameters": {
+        "formTitle": "Work with BizFlow AI",
+        "formDescription": "Tell us about your project and we will get back to you within 24 hours.",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "Full Name", "fieldName": "name", "requiredField": true },
+            { "fieldLabel": "Email", "fieldType": "email", "fieldName": "email", "requiredField": true },
+            { "fieldLabel": "Company", "fieldName": "company" },
+            {
+              "fieldLabel": "Service Needed",
+              "fieldType": "dropdown",
+              "fieldName": "service",
+              "fieldOptions": { "values": [ { "option": "AI Chatbot" }, { "option": "Workflow Automation" }, { "option": "Lead Generation System" }, { "option": "Data & Reporting Automation" }, { "option": "Other" } ] },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Budget",
+              "fieldType": "dropdown",
+              "fieldName": "budget",
+              "fieldOptions": { "values": [ { "option": "Under $500" }, { "option": "$500 - $2,000" }, { "option": "$2,000 - $5,000" }, { "option": "$5,000+" } ] },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Timeline",
+              "fieldType": "dropdown",
+              "fieldName": "timeline",
+              "fieldOptions": { "values": [ { "option": "ASAP" }, { "option": "1-3 months" }, { "option": "Just exploring" } ] },
+              "requiredField": true
+            },
+            { "fieldLabel": "Tell us about your project", "fieldType": "textarea", "fieldName": "message", "placeholder": "What do you want to automate? What tools do you use today?", "requiredField": true }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Send inquiry",
+          "path": "bizflow-lead-intake",
+          "respondWithOptions": { "values": { "formSubmittedText": "Thanks! Your inquiry was received. Check your inbox for a reply from us shortly." } }
+        }
+      },
+      "id": "44db2f89-9128-403a-b89b-5fca0f57b580",
+      "name": "Lead Intake Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [0, 96],
+      "webhookId": "83d2ca36-9dec-4431-a421-a006c15ffcb2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "n1", "name": "name", "value": "={{ ($json.name ?? $json[\"Full Name\"] ?? \"\").trim() }}", "type": "string" },
+            { "id": "n2", "name": "email", "value": "={{ ($json.email ?? $json[\"Email\"] ?? \"\").trim().toLowerCase() }}", "type": "string" },
+            { "id": "n3", "name": "company", "value": "={{ ($json.company ?? $json[\"Company\"] ?? \"\").trim() || \"Not provided\" }}", "type": "string" },
+            { "id": "n4", "name": "service", "value": "={{ $json.service ?? $json[\"Service Needed\"] ?? \"Other\" }}", "type": "string" },
+            { "id": "n5", "name": "budget", "value": "={{ $json.budget ?? $json[\"Budget\"] ?? \"Unknown\" }}", "type": "string" },
+            { "id": "n6", "name": "timeline", "value": "={{ $json.timeline ?? $json[\"Timeline\"] ?? \"Unknown\" }}", "type": "string" },
+            { "id": "n7", "name": "message", "value": "={{ ($json.message ?? $json[\"Tell us about your project\"] ?? \"\").trim() }}", "type": "string" },
+            { "id": "n8", "name": "submitted_at", "value": "={{ $json.submittedAt ?? $now.toISO() }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a06c2124-1a7d-4563-be65-9cbf4b8d538a",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [224, 96]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Qualify this inbound lead for BizFlow AI, an AI automation agency.\n\nName: {{ $json.name }}\nCompany: {{ $json.company }}\nService: {{ $json.service }}\nBudget: {{ $json.budget }}\nTimeline: {{ $json.timeline }}\nMessage: {{ $json.message }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a sales qualification assistant for BizFlow AI, an agency that builds AI chatbots and business automations.\n\nScore each lead from 1 to 10 using this rubric:\n- Budget: $5,000+ = +3, $2,000-$5,000 = +2, $500-$2,000 = +1, Under $500 = 0\n- Timeline: ASAP = +3, 1-3 months = +2, Just exploring = 0\n- Clarity: a specific, automatable problem is described = up to +3\n- Fit: matches our services (chatbots, workflow automation, lead gen, reporting) = +1\n\nTier rules: score 8-10 = \"hot\", 5-7 = \"warm\", 1-4 = \"cold\".\nUrgency: \"high\", \"medium\" or \"low\".\nConfidence: 0 to 1. Use below 0.6 when the message is vague, spammy, off-topic, or looks fake.\nsummary: one sentence. reasoning: one or two sentences explaining the score.\nsuggested_reply: a warm, specific 3-5 sentence email reply to the lead, signed \"The BizFlow AI Team\". Do not promise prices.\n\nExample: budget \"$5,000+\", timeline \"ASAP\", message \"Our support team gets 300 emails a day, we want AI to draft replies in Zendesk\" -> score 10, tier \"hot\", urgency \"high\", confidence 0.95.\nExample: budget \"Under $500\", timeline \"Just exploring\", message \"hi\" -> score 1, tier \"cold\", urgency \"low\", confidence 0.3."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "991d7369-b43b-4001-afab-a2bba5429525",
+      "name": "AI Qualify Lead",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [496, 224],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": { "maxOutputTokens": 1024, "temperature": 0.1 }
+      },
+      "id": "2b90ea0a-f6dd-49b5-8f18-0fb6da6cbe9b",
+      "name": "Gemini (Qualifier)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [512, 448]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{ \"score\": 8, \"tier\": \"hot\", \"urgency\": \"high\", \"summary\": \"Dental clinic wants an after-hours booking chatbot, budget fits, needs it ASAP.\", \"reasoning\": \"Clear use case, budget in range, urgent timeline.\", \"confidence\": 0.9, \"suggested_reply\": \"Hi Maria, thanks for reaching out...\" }"
+      },
+      "id": "4b7b4968-a676-47bc-a3ca-c522e695ee1a",
+      "name": "Lead Score Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [640, 448]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "p1", "name": "submitted_at", "value": "={{ $(\"Normalize Lead\").item.json.submitted_at }}", "type": "string" },
+            { "id": "p2", "name": "name", "value": "={{ $(\"Normalize Lead\").item.json.name }}", "type": "string" },
+            { "id": "p3", "name": "email", "value": "={{ $(\"Normalize Lead\").item.json.email }}", "type": "string" },
+            { "id": "p4", "name": "company", "value": "={{ $(\"Normalize Lead\").item.json.company }}", "type": "string" },
+            { "id": "p5", "name": "service", "value": "={{ $(\"Normalize Lead\").item.json.service }}", "type": "string" },
+            { "id": "p6", "name": "budget", "value": "={{ $(\"Normalize Lead\").item.json.budget }}", "type": "string" },
+            { "id": "p7", "name": "timeline", "value": "={{ $(\"Normalize Lead\").item.json.timeline }}", "type": "string" },
+            { "id": "p8", "name": "message", "value": "={{ $(\"Normalize Lead\").item.json.message }}", "type": "string" },
+            { "id": "p9", "name": "score", "value": "={{ Number($json.output?.score ?? 0) }}", "type": "number" },
+            { "id": "p10", "name": "tier", "value": "={{ ($json.output?.tier ?? \"review\").toLowerCase() }}", "type": "string" },
+            { "id": "p11", "name": "urgency", "value": "={{ $json.output?.urgency ?? \"unknown\" }}", "type": "string" },
+            { "id": "p12", "name": "confidence", "value": "={{ Number($json.output?.confidence ?? 0) }}", "type": "number" },
+            { "id": "p13", "name": "summary", "value": "={{ $json.output?.summary ?? \"\" }}", "type": "string" },
+            { "id": "p14", "name": "reasoning", "value": "={{ $json.output?.reasoning ?? \"\" }}", "type": "string" },
+            { "id": "p15", "name": "suggested_reply", "value": "={{ $json.output?.suggested_reply ?? \"\" }}", "type": "string" },
+            { "id": "p16", "name": "route", "value": "={{ Number($json.output?.confidence ?? 0) < 0.6 ? \"review\" : ($json.output?.tier ?? \"review\").toLowerCase() }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4d32cf50-bcf6-47cf-a571-432aa3b54122",
+      "name": "Prepare Lead Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1072, 224]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"output\": { \"score\": 0, \"tier\": \"review\", \"urgency\": \"unknown\", \"summary\": \"AI qualification failed - please review manually.\", \"reasoning\": \"The AI step returned an error or invalid output.\", \"confidence\": 0, \"suggested_reply\": \"\" } }",
+        "options": {}
+      },
+      "id": "63ec2f67-5e7a-41ff-a8c2-f9bcd19f333b",
+      "name": "Mark AI Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [848, 304]
+    },
+    {
+      "parameters": {
+        "dataTableId": { "__rl": true, "mode": "id", "value": "cXlXWoUSUhAImPpR", "cachedResultName": "Portfolio - Leads" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "submitted_at": "={{ $json.submitted_at }}",
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "company": "={{ $json.company }}",
+            "service": "={{ $json.service }}",
+            "budget": "={{ $json.budget }}",
+            "message": "={{ $json.message }}",
+            "score": "={{ $json.score }}",
+            "tier": "={{ $json.tier }}",
+            "urgency": "={{ $json.urgency }}",
+            "confidence": "={{ $json.confidence }}",
+            "summary": "={{ $json.summary }}",
+            "reasoning": "={{ $json.reasoning }}",
+            "route": "={{ $json.route }}"
+          },
+          "schema": [
+            { "id": "submitted_at", "displayName": "submitted_at", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "name", "displayName": "name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "email", "displayName": "email", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "company", "displayName": "company", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "service", "displayName": "service", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "budget", "displayName": "budget", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "message", "displayName": "message", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "score", "displayName": "score", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": true },
+            { "id": "tier", "displayName": "tier", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "urgency", "displayName": "urgency", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "confidence", "displayName": "confidence", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": true },
+            { "id": "summary", "displayName": "summary", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "reasoning", "displayName": "reasoning", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "route", "displayName": "route", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1b16fcdd-ff6f-444d-8fc4-edaa8aa49f7e",
+      "name": "Log Lead to Data Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [1136, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 1 },
+                "conditions": [ { "leftValue": "={{ $json.route }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "hot" } ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Hot"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 1 },
+                "conditions": [ { "leftValue": "={{ $json.route }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "warm" } ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Warm"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 1 },
+                "conditions": [ { "leftValue": "={{ $json.route }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "cold" } ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cold"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra", "renameFallbackOutput": "Needs Review" }
+      },
+      "id": "c9264dcd-a390-4d1e-aa0a-d4c615e8992c",
+      "name": "Route by Tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1024, 576]
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=🔥 Hot lead ({{ $json.score }}/10): {{ $json.name }} - {{ $json.service }}",
+        "message": "=<h2>New hot lead</h2><p><b>{{ $json.name }}</b> ({{ $json.email }}) from <b>{{ $json.company }}</b></p><ul><li>Service: {{ $json.service }}</li><li>Budget: {{ $json.budget }}</li><li>Timeline: {{ $json.timeline }}</li><li>Score: {{ $json.score }}/10 · Urgency: {{ $json.urgency }} · Confidence: {{ Math.round($json.confidence * 100) }}%</li></ul><p><b>Summary:</b> {{ $json.summary }}</p><p><b>Why:</b> {{ $json.reasoning }}</p><p><b>Their message:</b><br>{{ $json.message }}</p><hr><h3>Suggested reply (review, then send)</h3><p style=\"white-space:pre-wrap\">{{ $json.suggested_reply }}</p>",
+        "options": { "appendAttribution": false }
+      },
+      "id": "a7e72f38-9acc-4552-a065-a2545c24f20e",
+      "name": "Alert Owner - Hot Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1248, 320],
+      "webhookId": "ea786489-63ce-42ad-8022-b867df5ba5a7",
+      "onError": "continueRegularOutput",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Re: your {{ $json.service }} project",
+        "emailType": "text",
+        "message": "={{ $json.suggested_reply }}",
+        "options": { "appendAttribution": false, "senderName": "BizFlow AI" }
+      },
+      "id": "a746cb55-5bc3-4d41-a0b0-8c3be614d415",
+      "name": "Reply to Warm Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1248, 512],
+      "webhookId": "61016923-0d4f-4962-ad69-94b450aba4cf",
+      "onError": "continueRegularOutput",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "Thanks for reaching out to BizFlow AI",
+        "emailType": "text",
+        "message": "=Hi {{ $json.name.split(\" \")[0] || \"there\" }},\n\nThanks for your interest in {{ $json.service }}. We have received your message and saved it.\n\nWhile you plan your next steps, a good first move is to list the 3 most repetitive tasks your team does each week. Those are usually the fastest wins for automation.\n\nWhen you are ready to go further, just reply to this email and we will set up a free 20-minute call.\n\nThe BizFlow AI Team",
+        "options": { "appendAttribution": false, "senderName": "BizFlow AI" }
+      },
+      "id": "1e8baf49-93ba-447b-9921-e4568109e031",
+      "name": "Send Nurture Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1248, 704],
+      "webhookId": "a05b20ef-349f-4694-a7f6-f490db5afad2",
+      "onError": "continueRegularOutput",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=⚠️ Lead needs review: {{ $json.name || \"Unknown\" }}",
+        "message": "=<h2>Lead needs a human look</h2><p>The AI was not confident enough to route this lead automatically (confidence {{ Math.round($json.confidence * 100) }}%).</p><p><b>{{ $json.name }}</b> ({{ $json.email }}) · {{ $json.company }}</p><ul><li>Service: {{ $json.service }}</li><li>Budget: {{ $json.budget }}</li><li>Timeline: {{ $json.timeline }}</li></ul><p><b>AI notes:</b> {{ $json.summary }} {{ $json.reasoning }}</p><p><b>Their message:</b><br>{{ $json.message }}</p>",
+        "options": { "appendAttribution": false }
+      },
+      "id": "f5c68d41-5172-4a7e-aa74-038c362e871e",
+      "name": "Flag for Manual Review",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1248, 896],
+      "webhookId": "2c4314db-a2f4-4c3c-9496-fcffff96d107",
+      "onError": "continueRegularOutput",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    }
+  ],
+  "connections": {
+    "Lead Intake Form": { "main": [ [ { "node": "Normalize Lead", "type": "main", "index": 0 } ] ] },
+    "Normalize Lead": { "main": [ [ { "node": "AI Qualify Lead", "type": "main", "index": 0 } ] ] },
+    "AI Qualify Lead": { "main": [ [ { "node": "Prepare Lead Record", "type": "main", "index": 0 } ], [ { "node": "Mark AI Failure", "type": "main", "index": 0 } ] ] },
+    "Gemini (Qualifier)": { "ai_languageModel": [ [ { "node": "AI Qualify Lead", "type": "ai_languageModel", "index": 0 } ] ] },
+    "Lead Score Schema": { "ai_outputParser": [ [ { "node": "AI Qualify Lead", "type": "ai_outputParser", "index": 0 } ] ] },
+    "Prepare Lead Record": { "main": [ [ { "node": "Log Lead to Data Table", "type": "main", "index": 0 }, { "node": "Route by Tier", "type": "main", "index": 0 } ] ] },
+    "Mark AI Failure": { "main": [ [ { "node": "Prepare Lead Record", "type": "main", "index": 0 } ] ] },
+    "Route by Tier": {
+      "main": [
+        [ { "node": "Alert Owner - Hot Lead", "type": "main", "index": 0 } ],
+        [ { "node": "Reply to Warm Lead", "type": "main", "index": 0 } ],
+        [ { "node": "Send Nurture Email", "type": "main", "index": 0 } ],
+        [ { "node": "Flag for Manual Review", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "tags": [],
+  "meta": { "templateCredsSetupCompleted": false }
+}

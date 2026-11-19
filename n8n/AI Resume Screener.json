@@ -1,0 +1,288 @@
+{
+  "name": "AI Resume Screener",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📄 AI Resume Screener\n**Portfolio project by BizFlow AI**\n\n1. Candidate applies through the form and uploads a PDF resume\n2. Text is extracted; scanned/unreadable PDFs go to manual review\n3. Gemini scores the resume 0-100 against the job description (bias-safe prompt)\n4. Result saved to the **Portfolio - Candidates** data table\n5. Shortlisted candidates → hiring manager gets summary + interview questions\n6. Every candidate gets an acknowledgement email\n\nEdit job descriptions in **Load Job Description**.",
+        "height": 708,
+        "width": 1908,
+        "color": 4
+      },
+      "id": "a1e7bb5b-8253-4a9e-8297-0bba544517b3",
+      "name": "Sticky Note 48b47a1a",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-192, 16]
+    },
+    {
+      "parameters": {
+        "formTitle": "Apply to BizFlow AI",
+        "formDescription": "Upload your resume (PDF) and we will review your application.",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "Full Name", "fieldName": "name", "requiredField": true },
+            { "fieldLabel": "Email", "fieldType": "email", "fieldName": "email", "requiredField": true },
+            { "fieldLabel": "Phone", "fieldName": "phone" },
+            {
+              "fieldLabel": "Position",
+              "fieldType": "dropdown",
+              "fieldName": "position",
+              "fieldOptions": { "values": [ { "option": "AI Automation Specialist" }, { "option": "Customer Support Associate" } ] },
+              "requiredField": true
+            },
+            { "fieldLabel": "Resume (PDF)", "fieldType": "file", "fieldName": "resume", "multipleFiles": false, "acceptFileTypes": ".pdf", "requiredField": true }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Submit application",
+          "path": "bizflow-careers-apply",
+          "respondWithOptions": { "values": { "formSubmittedText": "Thank you for applying! We will email you once we have reviewed your resume." } }
+        }
+      },
+      "id": "997de01a-6eab-4401-a61f-ffb24abe370c",
+      "name": "Candidate Application Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [-48, 448],
+      "webhookId": "253f0a7a-7897-489f-b050-c9dfc639d898"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "={{ Object.keys($binary ?? {})[0] ?? \"resume\" }}",
+        "options": { "joinPages": true, "maxPages": 6 }
+      },
+      "id": "d2c5fcbb-4707-405b-9d28-8500468908b7",
+      "name": "Extract Resume Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [144, 448],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "j1", "name": "submitted_at", "value": "={{ $(\"Candidate Application Form\").item.json.submittedAt ?? $now.toISO() }}", "type": "string" },
+            { "id": "j2", "name": "name", "value": "={{ $(\"Candidate Application Form\").item.json.name ?? $(\"Candidate Application Form\").item.json[\"Full Name\"] ?? \"\" }}", "type": "string" },
+            { "id": "j3", "name": "email", "value": "={{ ($(\"Candidate Application Form\").item.json.email ?? $(\"Candidate Application Form\").item.json[\"Email\"] ?? \"\").trim().toLowerCase() }}", "type": "string" },
+            { "id": "j4", "name": "phone", "value": "={{ $(\"Candidate Application Form\").item.json.phone ?? $(\"Candidate Application Form\").item.json[\"Phone\"] ?? \"\" }}", "type": "string" },
+            { "id": "j5", "name": "position", "value": "={{ $(\"Candidate Application Form\").item.json.position ?? $(\"Candidate Application Form\").item.json[\"Position\"] ?? \"AI Automation Specialist\" }}", "type": "string" },
+            { "id": "j6", "name": "resume_text", "value": "={{ ($json.text ?? \"\").slice(0, 15000) }}", "type": "string" },
+            { "id": "j7", "name": "job_description", "value": "={{ ({ \"AI Automation Specialist\": \"AI Automation Specialist (remote, full-time). Must have: 2+ years building automations in n8n, Make or Zapier; REST APIs and webhooks; JSON; prompt engineering with LLMs (OpenAI, Gemini or Claude); clear written English. Nice to have: JavaScript or Python, Supabase/Postgres, RAG / vector databases, client-facing freelance experience.\", \"Customer Support Associate\": \"Customer Support Associate (remote). Must have: 1+ year in customer support or a BPO; excellent written English; experience with a helpdesk tool such as Zendesk, Freshdesk or HubSpot; empathy and calm under pressure. Nice to have: experience with chatbots or AI tools, SaaS support, Filipino or Cebuano language skills.\" })[$(\"Candidate Application Form\").item.json.position ?? $(\"Candidate Application Form\").item.json[\"Position\"]] ?? \"General role at an AI automation agency.\" }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d19cc4dd-d47d-4f36-b42b-224a6d4ae71e",
+      "name": "Load Job Description",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [416, 448]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [ { "leftValue": "={{ $json.resume_text.trim().length }}", "operator": { "type": "number", "operation": "gte" }, "rightValue": 200 } ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "75e7b822-8f20-4639-b57e-2fced243b23d",
+      "name": "Resume Readable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [640, 448]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=JOB DESCRIPTION:\n{{ $json.job_description }}\n\nCANDIDATE: {{ $json.name }}\n\nRESUME TEXT:\n{{ $json.resume_text }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a fair, careful technical recruiter. Compare the resume to the job description.\n\nScoring (0-100): must-have skills 50 points, relevant experience 25, nice-to-have skills 15, communication/clarity of the resume 10.\nrecommendation: \"shortlist\" if score >= 75, \"maybe\" if 50-74, \"reject\" if below 50.\nyears_experience: your best estimate of relevant years (number).\nmatched_skills / missing_skills: short skill names from the job description.\nred_flags: factual concerns only (e.g. unexplained gaps over 2 years, no relevant experience). Empty array if none.\nsummary: 2 sentences.\ninterview_questions: 3 specific questions that probe this candidate's gaps or claims.\n\nJudge ONLY job-relevant skills and experience. Ignore and never mention age, gender, religion, ethnicity, marital status, photos or school prestige."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "c024b064-f391-4de7-b487-833ce7c38eb0",
+      "name": "AI Screen Resume",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [880, 208],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": { "maxOutputTokens": 2048, "temperature": 0.1 }
+      },
+      "id": "37aee200-7ad3-4eb5-8d3e-0d3ed5cef179",
+      "name": "Gemini (Recruiter)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [896, 432]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{ \"score\": 82, \"recommendation\": \"shortlist\", \"years_experience\": 3, \"matched_skills\": [\"n8n\", \"Zapier\", \"REST APIs\"], \"missing_skills\": [\"Supabase\"], \"red_flags\": [], \"summary\": \"Strong automation builder with 3 years of n8n and Zapier client work.\", \"interview_questions\": [\"Walk me through the most complex n8n workflow you built.\", \"How do you handle API rate limits?\", \"How would you test an LLM step for consistency?\"] }"
+      },
+      "id": "6a2abb33-47d6-4bd1-b5f7-1358de3bba4e",
+      "name": "Screening Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [1024, 432]
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=⚠️ Resume needs manual review: {{ $(\"Candidate Application Form\").item.json.name ?? \"Unknown applicant\" }}",
+        "message": "=<h2>Could not screen this resume automatically</h2><p>The PDF may be scanned (image only), password-protected, or the AI step failed.</p><p><b>{{ $(\"Candidate Application Form\").item.json.name }}</b> · {{ $(\"Candidate Application Form\").item.json.email }} · {{ $(\"Candidate Application Form\").item.json.phone }}<br>Position: {{ $(\"Candidate Application Form\").item.json.position }}</p><p>Open the execution in n8n to view the uploaded file.</p>",
+        "options": { "appendAttribution": false }
+      },
+      "id": "e751e5cb-5af7-4129-8f08-bb8c4750142f",
+      "name": "Flag Resume for Manual Review",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [912, 464],
+      "webhookId": "55b49d13-b5f2-415c-a978-fc74e4699446",
+      "onError": "continueRegularOutput",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "c1", "name": "submitted_at", "value": "={{ $(\"Load Job Description\").item.json.submitted_at }}", "type": "string" },
+            { "id": "c2", "name": "name", "value": "={{ $(\"Load Job Description\").item.json.name }}", "type": "string" },
+            { "id": "c3", "name": "email", "value": "={{ $(\"Load Job Description\").item.json.email }}", "type": "string" },
+            { "id": "c4", "name": "phone", "value": "={{ $(\"Load Job Description\").item.json.phone }}", "type": "string" },
+            { "id": "c5", "name": "position", "value": "={{ $(\"Load Job Description\").item.json.position }}", "type": "string" },
+            { "id": "c6", "name": "score", "value": "={{ Number($json.output.score ?? 0) }}", "type": "number" },
+            { "id": "c7", "name": "recommendation", "value": "={{ ($json.output.recommendation ?? \"maybe\").toLowerCase() }}", "type": "string" },
+            { "id": "c8", "name": "years_experience", "value": "={{ Number($json.output.years_experience ?? 0) }}", "type": "number" },
+            { "id": "c9", "name": "matched_skills", "value": "={{ ($json.output.matched_skills ?? []).join(\", \") }}", "type": "string" },
+            { "id": "c10", "name": "missing_skills", "value": "={{ ($json.output.missing_skills ?? []).join(\", \") }}", "type": "string" },
+            { "id": "c11", "name": "red_flags", "value": "={{ ($json.output.red_flags ?? []).join(\"; \") || \"None\" }}", "type": "string" },
+            { "id": "c12", "name": "summary", "value": "={{ $json.output.summary ?? \"\" }}", "type": "string" },
+            { "id": "c13", "name": "interview_questions_html", "value": "={{ ($json.output.interview_questions ?? []).map(q => \"<li>\" + q + \"</li>\").join(\"\") }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "926c004b-a966-4188-b379-ee94bb396edb",
+      "name": "Prepare Candidate Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1264, 624]
+    },
+    {
+      "parameters": {
+        "dataTableId": { "__rl": true, "mode": "id", "value": "CYvBMFVdQjRL2MqE", "cachedResultName": "Portfolio - Candidates" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "submitted_at": "={{ $json.submitted_at }}",
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "phone": "={{ $json.phone }}",
+            "position": "={{ $json.position }}",
+            "score": "={{ $json.score }}",
+            "recommendation": "={{ $json.recommendation }}",
+            "years_experience": "={{ $json.years_experience }}",
+            "matched_skills": "={{ $json.matched_skills }}",
+            "missing_skills": "={{ $json.missing_skills }}",
+            "summary": "={{ $json.summary }}"
+          },
+          "schema": [
+            { "id": "submitted_at", "displayName": "submitted_at", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "name", "displayName": "name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "email", "displayName": "email", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "phone", "displayName": "phone", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "position", "displayName": "position", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "score", "displayName": "score", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": true },
+            { "id": "recommendation", "displayName": "recommendation", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "years_experience", "displayName": "years_experience", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": true },
+            { "id": "matched_skills", "displayName": "matched_skills", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "missing_skills", "displayName": "missing_skills", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "summary", "displayName": "summary", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b4be23f9-2656-455d-acd8-b6ad93fd5e88",
+      "name": "Save to Candidates Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [1488, 528],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=We received your application - {{ $json.position }}",
+        "emailType": "text",
+        "message": "=Hi {{ $json.name.split(\" \")[0] || \"there\" }},\n\nThank you for applying for the {{ $json.position }} role at BizFlow AI. Your resume has been received and our team is reviewing it.\n\nIf your profile is a match, we will reach out within 5 business days to schedule an interview.\n\nBest regards,\nThe BizFlow AI Hiring Team",
+        "options": { "appendAttribution": false, "senderName": "BizFlow AI Careers" }
+      },
+      "id": "87ce6813-838e-4fa0-a9ef-22a2ce77a400",
+      "name": "Acknowledge Candidate",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1488, 720],
+      "webhookId": "73251f78-e243-4436-bddb-953490fc7800",
+      "onError": "continueRegularOutput",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [ { "leftValue": "={{ $json.recommendation }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "shortlist" } ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "84b2a58e-dce1-4710-9524-d7c9f359aaed",
+      "name": "Shortlisted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1488, 912]
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=⭐ Shortlist ({{ $json.score }}/100): {{ $json.name }} for {{ $json.position }}",
+        "message": "=<h2>Shortlisted candidate</h2><p><b>{{ $json.name }}</b> · {{ $json.email }} · {{ $json.phone }}</p><p><b>Position:</b> {{ $json.position }}<br><b>Score:</b> {{ $json.score }}/100 · <b>Relevant experience:</b> ~{{ $json.years_experience }} yrs</p><p><b>Summary:</b> {{ $json.summary }}</p><p><b>✅ Matched:</b> {{ $json.matched_skills }}<br><b>❌ Missing:</b> {{ $json.missing_skills }}<br><b>⚠️ Red flags:</b> {{ $json.red_flags }}</p><h3>Suggested interview questions</h3><ol>{{ $json.interview_questions_html }}</ol><p style=\"color:#888;font-size:12px\">AI screening is a first pass. Please review the resume before deciding.</p>",
+        "options": { "appendAttribution": false }
+      },
+      "id": "69aa0ef8-2957-4455-95ca-78515a48852f",
+      "name": "Alert Hiring Manager",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1712, 912],
+      "webhookId": "bcd39fc8-eb16-4385-94e6-9c5e593a7cf1",
+      "onError": "continueRegularOutput",
+      "credentials": { "gmailOAuth2": { "id": "I0nPvOkxnsG8ubaE", "name": "Gmail account" } }
+    }
+  ],
+  "connections": {
+    "Candidate Application Form": { "main": [ [ { "node": "Extract Resume Text", "type": "main", "index": 0 } ] ] },
+    "Extract Resume Text": { "main": [ [ { "node": "Load Job Description", "type": "main", "index": 0 } ], [ { "node": "Flag Resume for Manual Review", "type": "main", "index": 0 } ] ] },
+    "Load Job Description": { "main": [ [ { "node": "Resume Readable?", "type": "main", "index": 0 } ] ] },
+    "Resume Readable?": { "main": [ [ { "node": "AI Screen Resume", "type": "main", "index": 0 } ], [ { "node": "Flag Resume for Manual Review", "type": "main", "index": 0 } ] ] },
+    "AI Screen Resume": { "main": [ [ { "node": "Prepare Candidate Record", "type": "main", "index": 0 } ], [ { "node": "Flag Resume for Manual Review", "type": "main", "index": 0 } ] ] },
+    "Gemini (Recruiter)": { "ai_languageModel": [ [ { "node": "AI Screen Resume", "type": "ai_languageModel", "index": 0 } ] ] },
+    "Screening Schema": { "ai_outputParser": [ [ { "node": "AI Screen Resume", "type": "ai_outputParser", "index": 0 } ] ] },
+    "Prepare Candidate Record": { "main": [ [ { "node": "Save to Candidates Table", "type": "main", "index": 0 }, { "node": "Acknowledge Candidate", "type": "main", "index": 0 }, { "node": "Shortlisted?", "type": "main", "index": 0 } ] ] },
+    "Shortlisted?": { "main": [ [ { "node": "Alert Hiring Manager", "type": "main", "index": 0 } ] ] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "tags": [],
+  "meta": { "templateCredsSetupCompleted": false }
+}
